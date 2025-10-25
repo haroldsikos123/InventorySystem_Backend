@@ -1,0 +1,39 @@
+[33m6033196[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mHaroldSikos[m[33m)[m Guardando cambios antes de limpiar historial de credenciales
+[33m4fdfa40[m cambio front 26-06
+[33m86c3d9a[m Update .gitignore
+[33m492ff04[m update 26-06 v2
+[33maec90c9[m Update .gitignore
+[33m1258a3e[m update 26-06
+[33m835aaf3[m[33m ([m[1;31morigin/HaroldSikos[m[33m)[m Update 24-06
+[33m0e0c470[m Adicion de atributo boleano a movimientos
+[33m73326c0[m Update CORS.java
+[33m2f3dbf3[m Update JwtTokenUtil.java
+[33m674a9b6[m Update CORS.java
+[33m746d847[m Update JwtTokenUtil.java
+[33m45bcd6c[m Update JwtTokenUtil.java
+[33m2c01d2d[m DockerFile
+[33mc3e9775[m Docker
+[33ma6c3563[m Incorporación de entidad Reclamos
+[33mb7c7d86[m ActualuzacionController
+[33m601ccc0[m Actualizacion permisos controller
+[33m711067c[m Actualizacion permisos Controller
+[33mff978ef[m Actualziacion cascada Usuario
+[33me665c36[m Actualizacion Backend Rol
+[33m49a41cc[m Cambios Controller MateriaPrima DTO
+[33m21b66d7[m Actualzacion Int a Long - Roles
+[33m9b53640[m Actualizacion Backend - Ordenes de Compra y Detalles
+[33m09a2944[m Actualizacion MateriaPrima, DetalleOrdenCompra y OrdenCompra
+[33mb39a09c[m Actualizacion Controllers
+[33m1c6ea7b[m ActualizacionBackend
+[33m54b0263[m Update Rol.java
+[33m32d0765[m Actualizacion2
+[33m81fbc8f[m Error1_guardado
+[33m8ccfc78[m Actualizacion Backend - Adicion de atiquetas
+[33mb74b4ef[m Actualizacion Backend
+[33me6e8512[m Cors creacion
+[33mbdb0dbe[m Actualizacion properties
+[33m32f0d22[m Update 03/04 - Cambios Recursividad
+[33ma74c768[m Cambios User componentes
+[33mec5fb21[m Actualizacion Roles y Users
+[33ma41487e[m Adicion componentes
+[33m0e9adf4[m CreacionProyecto
