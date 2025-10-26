@@ -27,32 +27,38 @@ public class UsuarioController {
     @Autowired
     private IEmpresaService empresaService; // <-- Inyecta IEmpresaService
 
-    @PostMapping("/registrar")
+@   PostMapping("/registrar")
     // @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
     public ResponseEntity<UsuarioDTO> registrar(@RequestBody UsuarioDTO dto) {
         ModelMapper m = new ModelMapper();
         Usuario usuario = m.map(dto, Usuario.class);
 
-        // --- Lógica para asignar Empresa ---
-        if (dto.getEmpresaId() != null) {
-            Empresa empresa = empresaService.listId(dto.getEmpresaId());
-            if (empresa != null) {
-                usuario.setEmpresa(empresa);
-            } else {
-                return new ResponseEntity<>(HttpStatus.BAD_REQUEST); 
-            }
-        } else {
-             // Manejar si la empresaId es nula (si es opcional o requerido)
-             usuario.setEmpresa(null);
+        // --- INICIO DE CORRECCIÓN (Lógica de Empresa por Defecto) ---
+        // Requerimiento: Asignar Empresa con ID 1 por defecto al crear.
+        // Si la empresa con ID 1 no existe, se asignará null.
+        try {
+            // Buscamos la empresa con ID 1 (1L es para forzar que sea tipo Long)
+            Empresa empresaPorDefecto = empresaService.listId(1L); 
+            
+            // listId(1L) devolverá la empresa si la encuentra,
+            // o devolverá null si no la encuentra.
+            // En ambos casos, es el comportamiento que deseas.
+            usuario.setEmpresa(empresaPorDefecto); 
+            
+        } catch (Exception e) {
+            // Si ocurre un error inesperado en el servicio (ej. la BD está caída),
+            // también asignamos null para asegurar que el usuario se cree.
+            usuario.setEmpresa(null);
         }
-        // --- Fin lógica Empresa ---
+        // --- FIN DE CORRECCIÓN ---
 
-        usuarioService.insert(usuario); 
+        usuarioService.insert(usuario); // Guardar el usuario nuevo
 
+        // Devolver el usuario creado
         UsuarioDTO usuarioGuardadoDTO = m.map(usuario, UsuarioDTO.class);
         return new ResponseEntity<>(usuarioGuardadoDTO, HttpStatus.CREATED);
     }
-
+    
     @GetMapping("/listar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
     public List<UsuarioDTO> listar() {
