@@ -65,9 +65,14 @@ public class WebSecurityConfig {
                 .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/authenticate", "/roles/registrar").permitAll()
-                    .anyRequest().authenticated()
-            )
+                .requestMatchers(
+                    "/authenticate/**",     
+                    "/roles/**",             
+                    "/usuarios/registrar"  
+                ).permitAll()
+                .anyRequest().authenticated()
+)
+
 
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
