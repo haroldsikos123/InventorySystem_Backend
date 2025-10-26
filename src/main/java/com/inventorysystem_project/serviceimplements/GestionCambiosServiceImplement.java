@@ -39,11 +39,13 @@ public class GestionCambiosServiceImplement implements IGestionCambiosService {
     }
 
     @Override
-    public SolicitudCambioDTO registrarRFC(SolicitudCambioDTO solicitudCambioDTO) {
+    public SolicitudCambioDTO registrarRFC(SolicitudCambioDTO solicitudCambioDTO, String usernameSolicitante) {
         SolicitudCambio rfc = modelMapper.map(solicitudCambioDTO, SolicitudCambio.class);
 
-        Usuario solicitante = usuarioRepo.findById(solicitudCambioDTO.getSolicitanteId())
-                 .orElseThrow(() -> new EntityNotFoundException("Usuario (solicitante) no encontrado con ID: " + solicitudCambioDTO.getSolicitanteId()));
+        Usuario solicitante = usuarioRepo.findByUsername(usernameSolicitante);
+        if (solicitante == null) {
+            throw new EntityNotFoundException("Usuario (solicitante) no encontrado con username: " + usernameSolicitante);
+        }
         rfc.setSolicitante(solicitante);
 
         rfc.setEstado(EstadoCambio.REGISTRADO);

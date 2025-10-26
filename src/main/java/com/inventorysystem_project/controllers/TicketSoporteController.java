@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -24,11 +25,10 @@ public class TicketSoporteController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<TicketSoporteDTO> registrarTicket(@RequestBody TicketSoporteDTO ticketSoporteDTO) {
+    public ResponseEntity<TicketSoporteDTO> registrarTicket(
+            @RequestBody TicketSoporteDTO ticketSoporteDTO,
+            Authentication authentication) {
          try {
-            if (ticketSoporteDTO.getUsuarioReportaId() == null) {
-                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El ID del usuario que reporta es obligatorio.");
-            }
             if (ticketSoporteDTO.getDescripcion() == null || ticketSoporteDTO.getDescripcion().trim().isEmpty()) {
                  throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La descripción del ticket es obligatoria.");
             }
@@ -39,7 +39,8 @@ public class TicketSoporteController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El tipo de ticket (INCIDENTE/PROBLEMA) es obligatorio.");
             }
 
-            TicketSoporteDTO nuevoTicket = ticketService.registrarTicket(ticketSoporteDTO);
+            String username = authentication.getName();
+            TicketSoporteDTO nuevoTicket = ticketService.registrarTicket(ticketSoporteDTO, username);
             return new ResponseEntity<>(nuevoTicket, HttpStatus.CREATED);
         } catch (EntityNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
@@ -83,7 +84,7 @@ public class TicketSoporteController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or @ticketSoporteServiceImplement.obtenerTicketPorId(#id).responsableAsignadoId == principal.id")
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or @ticketSoporteServiceImplement.obtenerTicketPorId(#id).responsableAsignadoId == principal.id")
     public ResponseEntity<TicketSoporteDTO> actualizarTicket(@PathVariable Long id, @RequestBody TicketSoporteDTO ticketSoporteDTO) {
          try {
             if (ticketSoporteDTO.getDescripcion() == null || ticketSoporteDTO.getDescripcion().trim().isEmpty()) {
@@ -117,7 +118,7 @@ public class TicketSoporteController {
     }
 
     @PutMapping("/{ticketId}/estado")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or @ticketSoporteServiceImplement.obtenerTicketPorId(#ticketId).responsableAsignadoId == principal.id")
     public ResponseEntity<TicketSoporteDTO> cambiarEstadoTicket(@PathVariable Long ticketId, @RequestBody Map<String, String> payload) {
         String nuevoEstado = payload.get("estado");
         if (nuevoEstado == null || nuevoEstado.trim().isEmpty()) {
@@ -152,15 +153,16 @@ public class TicketSoporteController {
 
     @PostMapping("/{ticketId}/comentarios")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ComentarioTicketDTO> agregarComentario(@PathVariable Long ticketId, @RequestBody ComentarioTicketDTO comentarioDTO) {
+    public ResponseEntity<ComentarioTicketDTO> agregarComentario(
+            @PathVariable Long ticketId, 
+            @RequestBody ComentarioTicketDTO comentarioDTO,
+            Authentication authentication) {
         try {
-            if (comentarioDTO.getUsuarioId() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El ID del usuario que comenta es obligatorio.");
-            }
             if (comentarioDTO.getTexto() == null || comentarioDTO.getTexto().trim().isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El texto del comentario es obligatorio.");
             }
-            ComentarioTicketDTO nuevoComentario = ticketService.agregarComentario(ticketId, comentarioDTO);
+            String username = authentication.getName();
+            ComentarioTicketDTO nuevoComentario = ticketService.agregarComentario(ticketId, comentarioDTO, username);
             return new ResponseEntity<>(nuevoComentario, HttpStatus.CREATED);
         } catch (EntityNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);

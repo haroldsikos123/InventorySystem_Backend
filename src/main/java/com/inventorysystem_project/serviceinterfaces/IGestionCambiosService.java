@@ -5,7 +5,7 @@ import java.util.List;
 
 public interface IGestionCambiosService {
     
-    SolicitudCambioDTO registrarRFC(SolicitudCambioDTO solicitudCambioDTO);
+    SolicitudCambioDTO registrarRFC(SolicitudCambioDTO solicitudCambioDTO, String usernameSolicitante);
     SolicitudCambioDTO actualizarRFC(Long id, SolicitudCambioDTO solicitudCambioDTO);
     
     // Método específico para el flujo de aprobación

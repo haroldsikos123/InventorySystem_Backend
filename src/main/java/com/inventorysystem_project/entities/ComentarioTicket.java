@@ -25,7 +25,7 @@ public class ComentarioTicket {
     private Usuario usuario;
 
     @Column(columnDefinition = "TEXT", nullable = false)
-    private String contenido;
+    private String texto;
 
     @Column(nullable = false)
     private LocalDateTime fechaCreacion;
@@ -55,12 +55,12 @@ public class ComentarioTicket {
         this.usuario = usuario;
     }
 
-    public String getContenido() {
-        return contenido;
+    public String getTexto() {
+        return texto;
     }
 
-    public void setContenido(String contenido) {
-        this.contenido = contenido;
+    public void setTexto(String texto) {
+        this.texto = texto;
     }
 
     public LocalDateTime getFechaCreacion() {

@@ -7,7 +7,7 @@ import java.util.List;
 public interface ITicketSoporteService {
     
     // --- Gestión de Tickets ---
-    TicketSoporteDTO registrarTicket(TicketSoporteDTO ticketSoporteDTO);
+    TicketSoporteDTO registrarTicket(TicketSoporteDTO ticketSoporteDTO, String usernameReporta);
     TicketSoporteDTO actualizarTicket(Long id, TicketSoporteDTO ticketSoporteDTO);
     TicketSoporteDTO asignarTicket(Long ticketId, Long responsableId);
     TicketSoporteDTO cambiarEstado(Long ticketId, String estado);
@@ -17,6 +17,6 @@ public interface ITicketSoporteService {
     void eliminarTicket(Long id);
 
     // --- Gestión de Comentarios ---
-    ComentarioTicketDTO agregarComentario(Long ticketId, ComentarioTicketDTO comentarioDTO);
+    ComentarioTicketDTO agregarComentario(Long ticketId, ComentarioTicketDTO comentarioDTO, String usernameComenta);
     List<ComentarioTicketDTO> listarComentariosPorTicket(Long ticketId);
 }

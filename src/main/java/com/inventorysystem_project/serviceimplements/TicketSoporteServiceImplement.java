@@ -65,11 +65,13 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
     }
 
     @Override
-    public TicketSoporteDTO registrarTicket(TicketSoporteDTO ticketSoporteDTO) {
+    public TicketSoporteDTO registrarTicket(TicketSoporteDTO ticketSoporteDTO, String usernameReporta) {
         TicketSoporte ticket = modelMapper.map(ticketSoporteDTO, TicketSoporte.class);
 
-        Usuario usuarioReporta = usuarioRepo.findById(ticketSoporteDTO.getUsuarioReportaId())
-                .orElseThrow(() -> new EntityNotFoundException("Usuario (reporta) no encontrado con ID: " + ticketSoporteDTO.getUsuarioReportaId()));
+        Usuario usuarioReporta = usuarioRepo.findByUsername(usernameReporta);
+        if (usuarioReporta == null) {
+            throw new EntityNotFoundException("Usuario (reporta) no encontrado con username: " + usernameReporta);
+        }
         ticket.setUsuarioReporta(usuarioReporta);
 
         if (ticketSoporteDTO.getResponsableAsignadoId() != null) {
@@ -196,12 +198,14 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
     }
 
     @Override
-    public ComentarioTicketDTO agregarComentario(Long ticketId, ComentarioTicketDTO comentarioDTO) {
+    public ComentarioTicketDTO agregarComentario(Long ticketId, ComentarioTicketDTO comentarioDTO, String usernameComenta) {
         TicketSoporte ticket = ticketRepo.findById(ticketId)
                 .orElseThrow(() -> new EntityNotFoundException("Ticket no encontrado con ID: " + ticketId));
         
-        Usuario usuario = usuarioRepo.findById(comentarioDTO.getUsuarioId())
-                 .orElseThrow(() -> new EntityNotFoundException("Usuario (comenta) no encontrado con ID: " + comentarioDTO.getUsuarioId()));
+        Usuario usuario = usuarioRepo.findByUsername(usernameComenta);
+        if (usuario == null) {
+            throw new EntityNotFoundException("Usuario (comenta) no encontrado con username: " + usernameComenta);
+        }
 
         ComentarioTicket comentario = modelMapper.map(comentarioDTO, ComentarioTicket.class);
         comentario.setTicket(ticket);

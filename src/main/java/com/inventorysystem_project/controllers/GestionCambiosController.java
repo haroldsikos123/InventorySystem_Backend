@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,11 +24,10 @@ public class GestionCambiosController {
 
     @PostMapping("/rfc")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<SolicitudCambioDTO> registrarRFC(@RequestBody SolicitudCambioDTO solicitudCambioDTO) {
+    public ResponseEntity<SolicitudCambioDTO> registrarRFC(
+            @RequestBody SolicitudCambioDTO solicitudCambioDTO,
+            Authentication authentication) {
         try {
-            if (solicitudCambioDTO.getSolicitanteId() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El ID del solicitante es obligatorio.");
-            }
             if (solicitudCambioDTO.getTitulo() == null || solicitudCambioDTO.getTitulo().trim().isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El título es obligatorio.");
             }
@@ -41,7 +41,8 @@ public class GestionCambiosController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El tipo de cambio es obligatorio.");
             }
 
-            SolicitudCambioDTO nuevaRFC = cambiosService.registrarRFC(solicitudCambioDTO);
+            String username = authentication.getName();
+            SolicitudCambioDTO nuevaRFC = cambiosService.registrarRFC(solicitudCambioDTO, username);
             return new ResponseEntity<>(nuevaRFC, HttpStatus.CREATED);
         } catch (EntityNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
