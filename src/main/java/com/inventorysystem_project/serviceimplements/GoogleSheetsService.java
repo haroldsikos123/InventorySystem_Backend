@@ -44,20 +44,20 @@ public class GoogleSheetsService {
             in = GoogleSheetsService.class.getResourceAsStream("/credentials.json");
         }
 
-        if (in == null) {
-            // Este error ahora es mucho más claro sobre la causa raíz.
-            throw new IOException("No se pudo encontrar el archivo de credenciales. Asegúrate de que la variable de entorno GOOGLE_CREDENTIALS_PATH esté bien configurada en Render o que credentials.json exista en resources para ejecución local.");
-        }
+// if (in == null) {
+    //     // Este error ahora es mucho más claro sobre la causa raíz.
+    //     throw new IOException("No se pudo encontrar el archivo de credenciales. Asegúrate de que la variable de entorno GOOGLE_CREDENTIALS_PATH esté bien configurada en Render o que credentials.json exista en resources para ejecución local.");
+    // }
 
-        GoogleCredentials credentials = GoogleCredentials.fromStream(in)
-                .createScoped(Collections.singleton("https://www.googleapis.com/auth/spreadsheets"));
+    // GoogleCredentials credentials = GoogleCredentials.fromStream(in)
+    //         .createScoped(Collections.singleton("https://www.googleapis.com/auth/spreadsheets"));
 
-        this.sheetsService = new Sheets.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                JSON_FACTORY,
-                new HttpCredentialsAdapter(credentials))
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+    // this.sheetsService = new Sheets.Builder(
+    //         GoogleNetHttpTransport.newTrustedTransport(),
+    //         JSON_FACTORY,
+    //         new HttpCredentialsAdapter(credentials))
+    //         .setApplicationName(APPLICATION_NAME)
+    //            .build();
     }
     // --- FIN DE LA CORRECCIÓN ---
 
