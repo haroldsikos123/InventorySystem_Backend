@@ -66,13 +66,12 @@ public class WebSecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/authenticate/**",     
-                    "/roles/**",             
-                    "/usuarios/registrar"  
+                    "/authenticate/**",
+                    "/roles/**",
+                    "/usuarios/registrar"
                 ).permitAll()
                 .anyRequest().authenticated()
-)
-
+            )
 
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 

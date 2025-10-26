@@ -36,9 +36,10 @@ protected void doFilterInternal(HttpServletRequest request, HttpServletResponse 
     // 🔹 Evitar que el filtro se aplique a endpoints públicos
     String path = request.getRequestURI();
     if (path.startsWith("/authenticate") || path.startsWith("/usuarios/registrar") || path.startsWith("/roles/listar")) {
-        chain.doFilter(request, response);
-        return;
-    }
+		chain.doFilter(request, response);
+		return;
+	}
+
 
     // 🔹 Si no hay token o no empieza con Bearer, continuar sin autenticar
     if (requestTokenHeader == null || !requestTokenHeader.startsWith("Bearer ")) {
