@@ -1,21 +1,19 @@
 package com.inventorysystem_project.controllers;
 
-// --- IMPORTACIONES QUE FALTAN ---
 import com.inventorysystem_project.dtos.UsuarioDTO;
-import com.inventorysystem_project.entities.Empresa; // <-- Te falta este
+import com.inventorysystem_project.entities.Empresa; // <-- Importante
 import com.inventorysystem_project.entities.Usuario;
-import com.inventorysystem_project.serviceinterfaces.IEmpresaService; // <-- Te falta este
+import com.inventorysystem_project.serviceinterfaces.IEmpresaService; // <-- Importante
 import com.inventorysystem_project.serviceinterfaces.IUsuarioService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus; // <-- Te falta este
-import org.springframework.http.ResponseEntity; // <-- Te falta este
+import org.springframework.http.HttpStatus; // <-- Importante
+import org.springframework.http.ResponseEntity; // <-- Importante
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
-// --- FIN DE IMPORTACIONES ---
 
 @RestController
 @RequestMapping("/usuarios")
@@ -23,40 +21,41 @@ public class UsuarioController {
 
     @Autowired
     private IUsuarioService usuarioService;
-    
-    @Autowired
-    private IEmpresaService empresaService; // <-- Inyecta IEmpresaService
 
-@ @PostMapping("/registrar")
+    @Autowired
+    private IEmpresaService empresaService; // Inyección del servicio de Empresa
+
+    @PostMapping("/registrar")
     // @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
     public ResponseEntity<UsuarioDTO> registrar(@RequestBody UsuarioDTO dto) {
         
-        // --- INICIO DE VALIDACIÓN DE DUPLICADOS ---
+        // 1. VALIDACIÓN DE DUPLICADOS
         if (usuarioService.findByUsername(dto.getUsername()) != null) {
-            // Si el usuario ya existe, devuelve un error 409 Conflict
+            // Devuelve un error 409 Conflict si el usuario ya existe
             return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
-        // --- FIN DE VALIDACIÓN ---
 
         ModelMapper m = new ModelMapper();
         Usuario usuario = m.map(dto, Usuario.class);
 
-        // --- Lógica de Empresa por Defecto (ID 1) ---
+        // 2. LÓGICA DE EMPRESA POR DEFECTO (ID 1)
         try {
+            // Busca la empresa con ID 1
             Empresa empresaPorDefecto = empresaService.listId(1L); 
             usuario.setEmpresa(empresaPorDefecto); // Será null si no la encuentra
         } catch (Exception e) {
+            // Si hay un error (ej. servicio no disponible), asigna null
             usuario.setEmpresa(null);
         }
-        // --- Fin lógica Empresa ---
 
-        usuarioService.insert(usuario); // Guardar el usuario nuevo
+        // 3. GUARDAR USUARIO
+        usuarioService.insert(usuario); // El servicio se encarga de encriptar la contraseña
 
+        // 4. DEVOLVER RESPUESTA
         UsuarioDTO usuarioGuardadoDTO = m.map(usuario, UsuarioDTO.class);
-        // Devolver 201 Created con el usuario creado
-        return new ResponseEntity<>(usuarioGuardadoDTO, HttpStatus.CREATED);
+        return new ResponseEntity<>(usuarioGuardadoDTO, HttpStatus.CREATED); // Devuelve 201 Created
     }
-    // --- FIN DEL MÉTODO REGISTRAR ---
+
     @GetMapping("/listar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
     public List<UsuarioDTO> listar() {
@@ -80,20 +79,19 @@ public class UsuarioController {
         usuarioService.delete(id);
     }
 
-    // --- MÉTODO MODIFICAR CORREGIDO ---
+    // MÉTODO MODIFICAR (PUT) CORREGIDO
     @PutMapping
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
     public ResponseEntity<UsuarioDTO> modificar(@RequestBody UsuarioDTO dto) {
         ModelMapper m = new ModelMapper();
         
+        // Buscar el usuario existente
         Usuario usuarioExistente = usuarioService.listId(dto.getId());
-
         if (usuarioExistente == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND); 
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // No encontrado
         }
 
-        // Mapear campos actualizables
-        // (Sería mejor mapear campo por campo para evitar problemas con la contraseña)
+        // Mapear campos actualizables (Evita pisar la contraseña si no se envía)
         usuarioExistente.setNombre(dto.getNombre());
         usuarioExistente.setApellido(dto.getApellido());
         usuarioExistente.setCorreo(dto.getCorreo());
@@ -102,23 +100,23 @@ public class UsuarioController {
         usuarioExistente.setFechaNacimiento(dto.getFechaNacimiento());
         usuarioExistente.setGenero(dto.getGenero());
         usuarioExistente.setTelefono(dto.getTelefono());
-        // No mapeamos la contraseña aquí a menos que tengas lógica para re-encriptarla
-        
-        // Lógica de Empresa
+
+        // Lógica de Empresa (igual que en registrar, pero usando el ID del DTO)
         if (dto.getEmpresaId() != null) {
             Empresa empresa = empresaService.listId(dto.getEmpresaId());
             if (empresa != null) {
                 usuarioExistente.setEmpresa(empresa);
             } else {
-                return new ResponseEntity<>(HttpStatus.BAD_REQUEST); 
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Empresa ID inválido
             }
         } else {
-            usuarioExistente.setEmpresa(null); 
+            usuarioExistente.setEmpresa(null); // Permite quitar la empresa
         }
 
+        // Guardar la entidad actualizada
         usuarioService.insert(usuarioExistente); 
 
         UsuarioDTO usuarioActualizadoDTO = m.map(usuarioExistente, UsuarioDTO.class);
-        return new ResponseEntity<>(usuarioActualizadoDTO, HttpStatus.OK);
+        return new ResponseEntity<>(usuarioActualizadoDTO, HttpStatus.OK); // Devuelve 200 OK
     }
 }
