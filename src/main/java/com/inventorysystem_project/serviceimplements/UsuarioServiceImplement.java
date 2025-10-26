@@ -20,6 +20,10 @@ public class UsuarioServiceImplement implements IUsuarioService {
 
     @Override
     public void insert(Usuario usuario) {
+
+        if (usuario.getEmpresa() == null) {
+            usuario.setEmpresa(empresaRepository.findById(1L).orElse(null));
+        }
         if (usuario.getPassword() != null && !usuario.getPassword().startsWith("$2a$")) {
             usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
         }
