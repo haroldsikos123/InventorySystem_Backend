@@ -42,4 +42,9 @@ public class UsuarioServiceImplement implements IUsuarioService {
     public void delete(Long id) {
         usuarioRepository.deleteById(id);
     }
+
+    @Override
+    public Usuario findByUsername(String username) {
+        return usuarioRepository.findByUsername(username);
+    }
 }

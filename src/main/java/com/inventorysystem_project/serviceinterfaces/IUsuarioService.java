@@ -9,7 +9,7 @@ public interface IUsuarioService {
     List<Usuario> list();
     void delete(Long id);
     Usuario listId(Long id);
-
+    Usuario findByUsername(String username);
     // Puedes agregar métodos personalizados luego, como:
     // List<Users> findByEnabled(boolean status);
     // List<Users> findByRoleName(String role);
