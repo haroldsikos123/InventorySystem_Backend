@@ -35,7 +35,7 @@ protected void doFilterInternal(HttpServletRequest request, HttpServletResponse 
 
     // 🔹 Evitar que el filtro se aplique a endpoints públicos
     String path = request.getRequestURI();
-    if (path.startsWith("/authenticate") || path.startsWith("/roles") || path.startsWith("/usuarios/registrar")) {
+    if (path.startsWith("/authenticate") || path.startsWith("/usuarios/registrar") || path.startsWith("/roles/listar")) {
         chain.doFilter(request, response);
         return;
     }
