@@ -34,7 +34,10 @@ public class UsuarioController {
             // Devuelve un error 409 Conflict si el usuario ya existe
             return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
-
+        if (usuarioService.findByCorreo(dto.getCorreo()) != null) {
+            // Usamos un código distinto para que el frontend lo identifique
+            return new ResponseEntity<>(HttpStatus.PRECONDITION_FAILED); 
+        }
         ModelMapper m = new ModelMapper();
         Usuario usuario = m.map(dto, Usuario.class);
 

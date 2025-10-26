@@ -47,4 +47,8 @@ public class UsuarioServiceImplement implements IUsuarioService {
     public Usuario findByUsername(String username) {
         return usuarioRepository.findByUsername(username);
     }
+    @Override
+    public Usuario findByCorreo(String correo) {
+        return usuarioRepository.findByCorreo(correo);
+    }
 }
