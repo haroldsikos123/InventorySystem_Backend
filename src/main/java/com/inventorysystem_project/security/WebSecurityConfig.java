@@ -68,7 +68,8 @@ public class WebSecurityConfig {
                 .requestMatchers(
                     "/authenticate/**",
                     "/roles/**",
-                    "/usuarios/registrar"
+                    "/usuarios/registrar",
+                    "/usuarios/listar"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

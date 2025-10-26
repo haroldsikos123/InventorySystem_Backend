@@ -60,8 +60,9 @@ public class UsuarioController {
     }
 
     @GetMapping("/listar")
-    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
+    //@PreAuthorize("hasRole('ADMIN') or hasRole('USER') or hasRole('GUEST')")
     public List<UsuarioDTO> listar() {
+        System.out.println("Listar usuarios llamado!");
         return usuarioService.list().stream().map(usuario -> {
             ModelMapper m = new ModelMapper();
             return m.map(usuario, UsuarioDTO.class);

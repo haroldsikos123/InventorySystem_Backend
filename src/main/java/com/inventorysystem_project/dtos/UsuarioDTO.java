@@ -20,7 +20,7 @@ public class UsuarioDTO {
     private Long telefono;
     private Boolean enabled;
     private Long empresaId;  // Cambié a Empresa
-    private Rol rol;  // Cambié a List<String> para manejar los nombres de los roles
+    private String rolNombre;  // Cambié a List<String> para manejar los nombres de los roles
 
     // Getters and Setters
 
@@ -121,11 +121,11 @@ public class UsuarioDTO {
         this.empresaId = empresaId;
     }
 
-    public Rol getRol() {
-        return rol;
+    public String getRol() {
+        return rolNombre;
     }
 
-    public void setRol(Rol rol) {
-        this.rol = rol;
+    public void setRol(String rol) {
+        this.rolNombre = rol;
     }
 }
