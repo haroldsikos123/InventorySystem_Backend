@@ -1,5 +1,4 @@
-package com.inventorysystem_project.services;
-
+package com.inventorysystem_project.serviceimplements; 
 import com.inventorysystem_project.entities.Usuario;
 import com.inventorysystem_project.repositories.UsuarioRepository;
 import com.inventorysystem_project.serviceinterfaces.IUsuarioService;
@@ -20,11 +19,9 @@ public class UsuarioServiceImplement implements IUsuarioService {
 
     @Override
     public void insert(Usuario usuario) {
-
         if (usuario.getPassword() != null && !usuario.getPassword().startsWith("$2a$")) {
             usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
         }
-
         usuarioRepository.save(usuario);
     }
 
@@ -42,11 +39,13 @@ public class UsuarioServiceImplement implements IUsuarioService {
     public void delete(Long id) {
         usuarioRepository.deleteById(id);
     }
-
+    
     @Override
     public Usuario findByUsername(String username) {
         return usuarioRepository.findByUsername(username);
     }
+
+    // --- DEBES TENER ESTE MÉTODO ---
     @Override
     public Usuario findByCorreo(String correo) {
         return usuarioRepository.findByCorreo(correo);
