@@ -6,7 +6,6 @@ import com.inventorysystem_project.dtos.*;
 import com.inventorysystem_project.entities.DetalleOrdenCompra;
 import com.inventorysystem_project.entities.MateriaPrima;
 import com.inventorysystem_project.entities.OrdenCompra;
-import com.inventorysystem_project.serviceimplements.GoogleSheetsService;
 import com.inventorysystem_project.serviceinterfaces.IMateriaPrimaService;
 import com.inventorysystem_project.serviceinterfaces.IOrdenCompraService;
 import com.inventorysystem_project.serviceinterfaces.IDetalleOrdenCompraService;
@@ -47,8 +46,6 @@ public class OrdenCompraController {
     private String WHATSAPP_SENDER_ID;
     @Value("${whatsapp.api.version}")
     private String WHATSAPP_API_VERSION;
-    @Autowired
-    private GoogleSheetsService googleSheetsService; // <-- Inyecta el nuevo servicio
 
     @Autowired
     private IOrdenCompraService ordenCompraService;
@@ -122,21 +119,6 @@ public class OrdenCompraController {
     public void eliminar(@PathVariable("id") Long id) {
         ordenCompraService.delete(id);
     }
-
-
-    // AÑADE ESTE NUEVO ENDPOINT
-    @PostMapping("/registrar-en-sheet")
-    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public ResponseEntity<String> registrarEnSheet(@RequestBody List<List<Object>> rows) {
-        try {
-            googleSheetsService.appendValues("InputRPA", rows);
-            return ResponseEntity.ok("Registro añadido a Google Sheet exitosamente.");
-        } catch (IOException e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error de IO al escribir en Google Sheets: " + e.getMessage());
-        }
-    }
-
 
     @PutMapping
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
