@@ -1,15 +1,21 @@
 package com.inventorysystem_project.controllers;
 
+// --- IMPORTACIONES QUE FALTAN ---
 import com.inventorysystem_project.dtos.UsuarioDTO;
+import com.inventorysystem_project.entities.Empresa; // <-- Te falta este
 import com.inventorysystem_project.entities.Usuario;
+import com.inventorysystem_project.serviceinterfaces.IEmpresaService; // <-- Te falta este
 import com.inventorysystem_project.serviceinterfaces.IUsuarioService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus; // <-- Te falta este
+import org.springframework.http.ResponseEntity; // <-- Te falta este
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+// --- FIN DE IMPORTACIONES ---
 
 @RestController
 @RequestMapping("/usuarios")
@@ -17,44 +23,36 @@ public class UsuarioController {
 
     @Autowired
     private IUsuarioService usuarioService;
+    
     @Autowired
     private IEmpresaService empresaService; // <-- Inyecta IEmpresaService
 
     @PostMapping("/registrar")
-    // @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')") // Descomenta si usas seguridad aquí
-    // Cambiado para devolver ResponseEntity<UsuarioDTO>
+    // @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
     public ResponseEntity<UsuarioDTO> registrar(@RequestBody UsuarioDTO dto) {
         ModelMapper m = new ModelMapper();
         Usuario usuario = m.map(dto, Usuario.class);
 
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Asignar la Empresa manualmente
+        // --- Lógica para asignar Empresa ---
         if (dto.getEmpresaId() != null) {
             Empresa empresa = empresaService.listId(dto.getEmpresaId());
             if (empresa != null) {
                 usuario.setEmpresa(empresa);
             } else {
-                 // Opcional: Manejar el caso si la empresa no se encuentra
-                 // Podrías lanzar una excepción o devolver un error
-                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Ejemplo de respuesta de error
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST); 
             }
         } else {
-             // Opcional: Manejar el caso si no se envía empresaId
-             // Podrías asignar una empresa por defecto o lanzar un error si es requerido
-             // usuario.setEmpresa(null); // O manejar como error si es obligatorio
+             // Manejar si la empresaId es nula (si es opcional o requerido)
+             usuario.setEmpresa(null);
         }
-         // --- FIN DE LA CORRECCIÓN ---
+        // --- Fin lógica Empresa ---
 
+        usuarioService.insert(usuario); 
 
-        usuarioService.insert(usuario); // Guardar el usuario
-
-         // Convertir la entidad guardada de nuevo a DTO para la respuesta
         UsuarioDTO usuarioGuardadoDTO = m.map(usuario, UsuarioDTO.class);
-
-
-         // Devolver el DTO del usuario creado con estado 201 Created
         return new ResponseEntity<>(usuarioGuardadoDTO, HttpStatus.CREATED);
     }
+
     @GetMapping("/listar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
     public List<UsuarioDTO> listar() {
@@ -78,10 +76,45 @@ public class UsuarioController {
         usuarioService.delete(id);
     }
 
+    // --- MÉTODO MODIFICAR CORREGIDO ---
     @PutMapping
-    public void modificar(@RequestBody UsuarioDTO dto) {
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
+    public ResponseEntity<UsuarioDTO> modificar(@RequestBody UsuarioDTO dto) {
         ModelMapper m = new ModelMapper();
-        Usuario usuario = m.map(dto, Usuario.class);
-        usuarioService.insert(usuario);
+        
+        Usuario usuarioExistente = usuarioService.listId(dto.getId());
+
+        if (usuarioExistente == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND); 
+        }
+
+        // Mapear campos actualizables
+        // (Sería mejor mapear campo por campo para evitar problemas con la contraseña)
+        usuarioExistente.setNombre(dto.getNombre());
+        usuarioExistente.setApellido(dto.getApellido());
+        usuarioExistente.setCorreo(dto.getCorreo());
+        usuarioExistente.setDni(dto.getDni());
+        usuarioExistente.setEnabled(dto.getEnabled());
+        usuarioExistente.setFechaNacimiento(dto.getFechaNacimiento());
+        usuarioExistente.setGenero(dto.getGenero());
+        usuarioExistente.setTelefono(dto.getTelefono());
+        // No mapeamos la contraseña aquí a menos que tengas lógica para re-encriptarla
+        
+        // Lógica de Empresa
+        if (dto.getEmpresaId() != null) {
+            Empresa empresa = empresaService.listId(dto.getEmpresaId());
+            if (empresa != null) {
+                usuarioExistente.setEmpresa(empresa);
+            } else {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST); 
+            }
+        } else {
+            usuarioExistente.setEmpresa(null); 
+        }
+
+        usuarioService.insert(usuarioExistente); 
+
+        UsuarioDTO usuarioActualizadoDTO = m.map(usuarioExistente, UsuarioDTO.class);
+        return new ResponseEntity<>(usuarioActualizadoDTO, HttpStatus.OK);
     }
 }
