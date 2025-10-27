@@ -19,14 +19,15 @@ public class RolController {
     private IRolService rolR;
 
     @PostMapping("/registrar")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    // @PreAuthorize("hasAuthority('ADMIN')") // <-- ELIMINA O COMENTA ESTA LÍNEA
     public void registrar(@RequestBody RolDTO dto){
         ModelMapper m=new ModelMapper();
         Rol d=m.map(dto, Rol.class);
         rolR.insert(d);
     }
+    
     @GetMapping("/listar")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    // @PreAuthorize("hasAuthority('ADMIN')") // <-- ELIMINA O COMENTA ESTA LÍNEA
     public List<RolDTO> listar(){
         return rolR.list().stream().map(x->{
             ModelMapper m=new ModelMapper();
@@ -35,13 +36,13 @@ public class RolController {
     }
 
     @DeleteMapping("/eliminar/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')") // <-- DEJA ESTA (Eliminar debe ser solo para Admin)
     public void eliminar(@PathVariable("id")Long id){
         rolR.delete(id);
     }
 
     @PutMapping
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')") // <-- DEJA ESTA (Modificar debe ser solo para Admin)
     public void modificar(@RequestBody RolDTO dto){
         ModelMapper m=new ModelMapper();
         Rol d=m.map(dto, Rol.class);
