@@ -2,6 +2,7 @@ package com.inventorysystem_project.controllers;
 
 import com.inventorysystem_project.dtos.ComentarioTicketDTO;
 import com.inventorysystem_project.dtos.TicketSoporteDTO;
+import com.inventorysystem_project.entities.Usuario;
 import com.inventorysystem_project.serviceinterfaces.ITicketSoporteService;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -10,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -22,6 +25,9 @@ public class TicketSoporteController {
 
     @Autowired
     private ITicketSoporteService ticketService;
+
+    @Autowired
+    private com.inventorysystem_project.serviceinterfaces.IUsuarioService usuarioService;
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -53,24 +59,38 @@ public class TicketSoporteController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TicketSoporteDTO>> listarTickets(@RequestParam(required = false) String estado) {
-         try {
+        try {
             List<TicketSoporteDTO> tickets;
-            if (estado != null && !estado.trim().isEmpty()) {
-                tickets = ticketService.listarPorEstado(estado);
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            // Verificar si el usuario solo tiene el rol USER
+            boolean soloUser = authentication.getAuthorities().size() == 1 &&
+                             authentication.getAuthorities().stream()
+                                 .anyMatch(a -> a.getAuthority().equals("USER"));
+
+            if (soloUser) {
+                UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+                Usuario usuarioActual = usuarioService.findByUsername(userDetails.getUsername());
+                if (usuarioActual == null) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario actual no encontrado.");
+                }
+                tickets = ticketService.listarTicketsPorUsuario(usuarioActual.getId(), estado);
             } else {
-                tickets = ticketService.listarTodos();
+                if (estado != null && !estado.trim().isEmpty()) {
+                    tickets = ticketService.listarPorEstado(estado);
+                } else {
+                    tickets = ticketService.listarTodos();
+                }
             }
             return new ResponseEntity<>(tickets, HttpStatus.OK);
-         } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-         } catch (Exception e) {
+        } catch (Exception e) {
             System.err.println("Error al listar tickets: " + e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado al listar los tickets.", e);
-         }
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+        }
+    }    @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated() and (hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or hasAuthority('SOPORTE_N2') or @ticketSoporteServiceImplement.obtenerTicketPorId(#id).usuarioReportaUsername == principal.username)")
     public ResponseEntity<TicketSoporteDTO> obtenerTicketPorId(@PathVariable Long id) {
         try {
             TicketSoporteDTO ticket = ticketService.obtenerTicketPorId(id);
@@ -84,7 +104,7 @@ public class TicketSoporteController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or @ticketSoporteServiceImplement.obtenerTicketPorId(#id).responsableAsignadoId == principal.id")
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or hasAuthority('SOPORTE_N2')")
     public ResponseEntity<TicketSoporteDTO> actualizarTicket(@PathVariable Long id, @RequestBody TicketSoporteDTO ticketSoporteDTO) {
          try {
             if (ticketSoporteDTO.getDescripcion() == null || ticketSoporteDTO.getDescripcion().trim().isEmpty()) {
@@ -118,7 +138,7 @@ public class TicketSoporteController {
     }
 
     @PutMapping("/{ticketId}/estado")
-    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or @ticketSoporteServiceImplement.obtenerTicketPorId(#ticketId).responsableAsignadoId == principal.id")
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or hasAuthority('SOPORTE_N2') or @ticketSoporteServiceImplement.obtenerTicketPorId(#ticketId).responsableAsignadoId == principal.id")
     public ResponseEntity<TicketSoporteDTO> cambiarEstadoTicket(@PathVariable Long ticketId, @RequestBody Map<String, String> payload) {
         String nuevoEstado = payload.get("estado");
         if (nuevoEstado == null || nuevoEstado.trim().isEmpty()) {
@@ -152,7 +172,7 @@ public class TicketSoporteController {
     }
 
     @PostMapping("/{ticketId}/comentarios")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and (hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or hasAuthority('SOPORTE_N2') or @ticketSoporteServiceImplement.obtenerTicketPorId(#ticketId).usuarioReportaUsername == principal.username)")
     public ResponseEntity<ComentarioTicketDTO> agregarComentario(
             @PathVariable Long ticketId, 
             @RequestBody ComentarioTicketDTO comentarioDTO,
@@ -173,7 +193,7 @@ public class TicketSoporteController {
     }
 
     @GetMapping("/{ticketId}/comentarios")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and (hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or hasAuthority('SOPORTE_N2') or @ticketSoporteServiceImplement.obtenerTicketPorId(#ticketId).usuarioReportaUsername == principal.username)")
     public ResponseEntity<List<ComentarioTicketDTO>> listarComentarios(@PathVariable Long ticketId) {
         try {
             List<ComentarioTicketDTO> comentarios = ticketService.listarComentariosPorTicket(ticketId);

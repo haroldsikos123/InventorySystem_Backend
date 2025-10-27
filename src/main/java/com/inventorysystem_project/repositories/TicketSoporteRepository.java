@@ -14,4 +14,9 @@ public interface TicketSoporteRepository extends JpaRepository<TicketSoporte, Lo
     List<TicketSoporte> findByEstado(EstadoTicket estado);
     List<TicketSoporte> findByUsuarioReportaId(Long usuarioId);
     List<TicketSoporte> findByResponsableAsignadoId(Long usuarioId);
+    
+    /**
+     * Busca tickets por el ID del usuario que reportó Y por estado.
+     */
+    List<TicketSoporte> findByUsuarioReportaIdAndEstado(Long usuarioId, EstadoTicket estado);
 }

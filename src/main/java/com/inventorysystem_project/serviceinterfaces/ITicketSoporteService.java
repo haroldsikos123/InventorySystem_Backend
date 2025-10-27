@@ -19,4 +19,9 @@ public interface ITicketSoporteService {
     // --- Gestión de Comentarios ---
     ComentarioTicketDTO agregarComentario(Long ticketId, ComentarioTicketDTO comentarioDTO, String usernameComenta);
     List<ComentarioTicketDTO> listarComentariosPorTicket(Long ticketId);
+    
+    /**
+     * Lista los tickets reportados por un usuario específico, opcionalmente filtrados por estado.
+     */
+    List<TicketSoporteDTO> listarTicketsPorUsuario(Long usuarioId, String estado);
 }

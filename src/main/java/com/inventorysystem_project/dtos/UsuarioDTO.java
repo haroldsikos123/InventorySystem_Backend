@@ -1,10 +1,6 @@
 package com.inventorysystem_project.dtos;
 
-import com.inventorysystem_project.entities.Empresa;
-import com.inventorysystem_project.entities.Rol;
-
 import java.util.Date;
-import java.util.List;
 
 public class UsuarioDTO {
 
@@ -19,8 +15,8 @@ public class UsuarioDTO {
     private Date fechaNacimiento;
     private Long telefono;
     private Boolean enabled;
-    private Long empresaId;  // Cambié a Empresa
-    private String rolNombre;  // Cambié a List<String> para manejar los nombres de los roles
+    private Long empresaId;
+    private Long rolId;
 
     // Getters and Setters
 
@@ -121,11 +117,11 @@ public class UsuarioDTO {
         this.empresaId = empresaId;
     }
 
-    public String getRol() {
-        return rolNombre;
+    public Long getRolId() {
+        return rolId;
     }
 
-    public void setRol(String rol) {
-        this.rolNombre = rol;
+    public void setRolId(Long rolId) {
+        this.rolId = rolId;
     }
 }

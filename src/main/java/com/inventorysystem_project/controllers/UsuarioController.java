@@ -1,9 +1,11 @@
 package com.inventorysystem_project.controllers;
 
 import com.inventorysystem_project.dtos.UsuarioDTO;
-import com.inventorysystem_project.entities.Empresa; // <-- Importante
+import com.inventorysystem_project.entities.Empresa;
+import com.inventorysystem_project.entities.Rol;
 import com.inventorysystem_project.entities.Usuario;
-import com.inventorysystem_project.serviceinterfaces.IEmpresaService; // <-- Importante
+import com.inventorysystem_project.serviceinterfaces.IEmpresaService;
+import com.inventorysystem_project.serviceinterfaces.IRolService;
 import com.inventorysystem_project.serviceinterfaces.IUsuarioService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,10 @@ import org.springframework.http.HttpStatus; // <-- Importante
 import org.springframework.http.ResponseEntity; // <-- Importante
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,7 +29,10 @@ public class UsuarioController {
     private IUsuarioService usuarioService;
 
     @Autowired
-    private IEmpresaService empresaService; // Inyección del servicio de Empresa
+    private IEmpresaService empresaService;
+
+    @Autowired
+    private IRolService rolService;
 
     @PostMapping("/registrar")
     // @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
@@ -60,42 +69,129 @@ public class UsuarioController {
     }
 
     @GetMapping("/listar")
-    //@PreAuthorize("hasRole('ADMIN') or hasRole('USER') or hasRole('GUEST')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public List<UsuarioDTO> listar() {
-        System.out.println("Listar usuarios llamado!");
         return usuarioService.list().stream().map(usuario -> {
             ModelMapper m = new ModelMapper();
-            return m.map(usuario, UsuarioDTO.class);
+            UsuarioDTO dto = m.map(usuario, UsuarioDTO.class);
+            if (usuario.getRol() != null) {
+                dto.setRolId(usuario.getRol().getId());
+            }
+            if (usuario.getEmpresa() != null) {
+                dto.setEmpresaId(usuario.getEmpresa().getId());
+            }
+            return dto;
         }).collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public UsuarioDTO listarPorId(@PathVariable("id") Long id) {
+    @PreAuthorize("hasAuthority('ADMIN') or #id == principal.id")
+    public ResponseEntity<UsuarioDTO> listarPorId(@PathVariable("id") Long id) {
         Usuario usuario = usuarioService.listId(id);
+        if (usuario == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado");
+        }
         ModelMapper m = new ModelMapper();
-        return m.map(usuario, UsuarioDTO.class);
+        UsuarioDTO dto = m.map(usuario, UsuarioDTO.class);
+        if (usuario.getRol() != null) {
+            dto.setRolId(usuario.getRol().getId());
+        }
+        if (usuario.getEmpresa() != null) {
+            dto.setEmpresaId(usuario.getEmpresa().getId());
+        }
+        return ResponseEntity.ok(dto);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public void eliminar(@PathVariable("id") Long id) {
-        usuarioService.delete(id);
-    }
-
-    // MÉTODO MODIFICAR (PUT) CORREGIDO
-    @PutMapping
-    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public ResponseEntity<UsuarioDTO> modificar(@RequestBody UsuarioDTO dto) {
-        ModelMapper m = new ModelMapper();
-        
-        // Buscar el usuario existente
-        Usuario usuarioExistente = usuarioService.listId(dto.getId());
-        if (usuarioExistente == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // No encontrado
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Void> eliminar(@PathVariable("id") Long id) {
+        if (usuarioService.listId(id) == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
-        // Mapear campos actualizables (Evita pisar la contraseña si no se envía)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        Usuario usuarioActual = usuarioService.findByUsername(userDetails.getUsername());
+        if (usuarioActual != null && usuarioActual.getId().equals(id)) {
+            System.err.println("Advertencia: Intento de auto-eliminación del usuario ID " + id);
+        }
+
+        try {
+            usuarioService.delete(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch(Exception e) {
+            System.err.println("Error al guardar usuario actualizado: " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UsuarioDTO> obtenerMiPerfil() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        Usuario usuarioActual = usuarioService.findByUsername(userDetails.getUsername());
+
+        if (usuarioActual == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        ModelMapper m = new ModelMapper();
+        UsuarioDTO dto = m.map(usuarioActual, UsuarioDTO.class);
+        if (usuarioActual.getRol() != null) {
+            dto.setRolId(usuarioActual.getRol().getId());
+        }
+        if (usuarioActual.getEmpresa() != null) {
+            dto.setEmpresaId(usuarioActual.getEmpresa().getId());
+        }
+        return ResponseEntity.ok(dto);
+    }
+
+    @PutMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UsuarioDTO> actualizarMiPerfil(@RequestBody UsuarioDTO dto) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        Usuario usuarioActual = usuarioService.findByUsername(userDetails.getUsername());
+
+        if (usuarioActual == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        // Actualizar solo campos permitidos
+        usuarioActual.setNombre(dto.getNombre());
+        usuarioActual.setApellido(dto.getApellido());
+        usuarioActual.setTelefono(dto.getTelefono());
+        // NO permitir cambiar rol, enabled, username, etc.
+
+        try {
+            usuarioService.insert(usuarioActual);
+            Usuario usuarioGuardado = usuarioService.listId(usuarioActual.getId());
+            ModelMapper m = new ModelMapper();
+            UsuarioDTO updatedDto = m.map(usuarioGuardado, UsuarioDTO.class);
+            if (usuarioGuardado.getRol() != null) {
+                updatedDto.setRolId(usuarioGuardado.getRol().getId());
+            }
+            if (usuarioGuardado.getEmpresa() != null) {
+                updatedDto.setEmpresaId(usuarioGuardado.getEmpresa().getId());
+            }
+            return ResponseEntity.ok(updatedDto);
+        } catch (Exception e) {
+            System.err.println("Error al actualizar perfil de usuario: " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PutMapping
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<UsuarioDTO> modificar(@RequestBody UsuarioDTO dto) {
+        ModelMapper modelMapper = new ModelMapper();
+
+        Usuario usuarioExistente = usuarioService.listId(dto.getId());
+        if (usuarioExistente == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        // Mapear campos actualizables
         usuarioExistente.setNombre(dto.getNombre());
         usuarioExistente.setApellido(dto.getApellido());
         usuarioExistente.setCorreo(dto.getCorreo());
@@ -105,22 +201,43 @@ public class UsuarioController {
         usuarioExistente.setGenero(dto.getGenero());
         usuarioExistente.setTelefono(dto.getTelefono());
 
-        // Lógica de Empresa (igual que en registrar, pero usando el ID del DTO)
+        // Lógica de Empresa
         if (dto.getEmpresaId() != null) {
             Empresa empresa = empresaService.listId(dto.getEmpresaId());
             if (empresa != null) {
                 usuarioExistente.setEmpresa(empresa);
             } else {
-                return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Empresa ID inválido
+                System.err.println("Advertencia: Empresa con ID " + dto.getEmpresaId() + " no encontrada al modificar usuario " + dto.getId());
+                usuarioExistente.setEmpresa(null);
             }
         } else {
-            usuarioExistente.setEmpresa(null); // Permite quitar la empresa
+            usuarioExistente.setEmpresa(null);
         }
 
-        // Guardar la entidad actualizada
-        usuarioService.insert(usuarioExistente); 
+        // Lógica de Rol
+        if (dto.getRolId() != null) {
+            Rol nuevoRol = rolService.listId(dto.getRolId());
+            if (nuevoRol != null) {
+                usuarioExistente.setRol(nuevoRol);
+            } else {
+                System.err.println("Advertencia: Rol con ID " + dto.getRolId() + " no encontrado al modificar usuario " + dto.getId());
+            }
+        } else {
+            System.err.println("Advertencia: No se proporcionó rolId al modificar usuario " + dto.getId() + ". Se mantendrá el rol actual.");
+        }
 
-        UsuarioDTO usuarioActualizadoDTO = m.map(usuarioExistente, UsuarioDTO.class);
-        return new ResponseEntity<>(usuarioActualizadoDTO, HttpStatus.OK); // Devuelve 200 OK
+        try {
+            usuarioService.insert(usuarioExistente);
+            Usuario usuarioGuardado = usuarioService.listId(dto.getId());
+            UsuarioDTO usuarioActualizadoDTO = modelMapper.map(usuarioGuardado, UsuarioDTO.class);
+            if (usuarioGuardado.getRol() != null) {
+                usuarioActualizadoDTO.setRolId(usuarioGuardado.getRol().getId());
+            }
+            return new ResponseEntity<>(usuarioActualizadoDTO, HttpStatus.OK);
+        } catch(Exception e) {
+            System.err.println("Error al guardar usuario actualizado: " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
     }
 }

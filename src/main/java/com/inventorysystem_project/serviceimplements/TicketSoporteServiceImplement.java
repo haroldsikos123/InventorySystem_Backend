@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TicketSoporteServiceImplement implements ITicketSoporteService {
@@ -41,6 +42,7 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
         if (ticket.getUsuarioReporta() != null) {
             dto.setUsuarioReportaId(ticket.getUsuarioReporta().getId());
             dto.setUsuarioReportaNombre(ticket.getUsuarioReporta().getNombre() + " " + ticket.getUsuarioReporta().getApellido());
+            dto.setUsuarioReportaUsername(ticket.getUsuarioReporta().getUsername());
         }
         
         if (ticket.getResponsableAsignado() != null) {
@@ -223,6 +225,28 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
         }
         
         return comentarioRepo.findByTicketId(ticketId).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<TicketSoporteDTO> listarTicketsPorUsuario(Long usuarioId, String estadoStr) {
+        List<TicketSoporte> tickets;
+
+        if (estadoStr != null && !estadoStr.trim().isEmpty()) {
+            EstadoTicket estado;
+            try {
+                estado = EstadoTicket.valueOf(estadoStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Estado de ticket inválido para filtrar: '" + estadoStr + "'");
+            }
+            tickets = ticketRepo.findByUsuarioReportaIdAndEstado(usuarioId, estado);
+        } else {
+            tickets = ticketRepo.findByUsuarioReportaId(usuarioId);
+        }
+
+        return tickets.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }

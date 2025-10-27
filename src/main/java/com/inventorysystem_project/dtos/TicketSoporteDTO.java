@@ -13,6 +13,7 @@ public class TicketSoporteDTO {
     // Usamos IDs para la transferencia de datos
     private Long usuarioReportaId;
     private String usuarioReportaNombre; // Campo extra para mostrar en el front
+    private String usuarioReportaUsername; // Campo para seguridad y validación
     
     private String descripcion;
     private PrioridadTicket prioridad;
@@ -120,6 +121,14 @@ public class TicketSoporteDTO {
 
     public void setFechaCierre(LocalDateTime fechaCierre) {
         this.fechaCierre = fechaCierre;
+    }
+
+    public String getUsuarioReportaUsername() {
+        return usuarioReportaUsername;
+    }
+
+    public void setUsuarioReportaUsername(String usuarioReportaUsername) {
+        this.usuarioReportaUsername = usuarioReportaUsername;
     }
 
 }
