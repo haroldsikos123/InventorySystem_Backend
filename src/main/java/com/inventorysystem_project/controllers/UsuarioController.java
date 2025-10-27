@@ -34,17 +34,15 @@ public class UsuarioController {
     @Autowired
     private IRolService rolService;
 
-    @PostMapping("/registrar")
+ @PostMapping("/registrar")
     // @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
     public ResponseEntity<UsuarioDTO> registrar(@RequestBody UsuarioDTO dto) {
         
         // 1. VALIDACIÓN DE DUPLICADOS
         if (usuarioService.findByUsername(dto.getUsername()) != null) {
-            // Devuelve un error 409 Conflict si el usuario ya existe
             return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
         if (usuarioService.findByCorreo(dto.getCorreo()) != null) {
-            // Usamos un código distinto para que el frontend lo identifique
             return new ResponseEntity<>(HttpStatus.PRECONDITION_FAILED); 
         }
         ModelMapper m = new ModelMapper();
@@ -52,24 +50,41 @@ public class UsuarioController {
 
         // 2. LÓGICA DE EMPRESA POR DEFECTO (ID 1)
         try {
-            // Busca la empresa con ID 1
             Empresa empresaPorDefecto = empresaService.listId(1L); 
-            usuario.setEmpresa(empresaPorDefecto); // Será null si no la encuentra
+            usuario.setEmpresa(empresaPorDefecto); 
         } catch (Exception e) {
-            // Si hay un error (ej. servicio no disponible), asigna null
             usuario.setEmpresa(null);
         }
 
-        // 3. GUARDAR USUARIO
-        usuarioService.insert(usuario); // El servicio se encarga de encriptar la contraseña
+        // 3. LÓGICA DE ROL POR DEFECTO (ID 1)  <-- ¡AÑADIR ESTO!
+        try {
+            Rol rolPorDefecto = rolService.listId(1L); // Busca el Rol con ID 1
+            usuario.setRol(rolPorDefecto); // Asigna el rol
+        } catch (Exception e) {
+            System.err.println("Error al asignar rol por defecto (ID 1): " + e.getMessage());
+            usuario.setRol(null);
+        }
+        // FIN DE LA MODIFICACIÓN
 
-        // 4. DEVOLVER RESPUESTA
+        // 4. GUARDAR USUARIO
+        usuarioService.insert(usuario); // El servicio encriptará la contraseña
+
+        // 5. DEVOLVER RESPUESTA
         UsuarioDTO usuarioGuardadoDTO = m.map(usuario, UsuarioDTO.class);
-        return new ResponseEntity<>(usuarioGuardadoDTO, HttpStatus.CREATED); // Devuelve 201 Created
+        
+        // Asignar IDs al DTO de respuesta
+        if (usuario.getRol() != null) {
+            usuarioGuardadoDTO.setRolId(usuario.getRol().getId());
+        }
+        if (usuario.getEmpresa() != null) {
+            usuarioGuardadoDTO.setEmpresaId(usuario.getEmpresa().getId());
+        }
+        
+        return new ResponseEntity<>(usuarioGuardadoDTO, HttpStatus.CREATED);
     }
 
     @GetMapping("/listar")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    //@PreAuthorize("hasAuthority('ADMIN')")
     public List<UsuarioDTO> listar() {
         return usuarioService.list().stream().map(usuario -> {
             ModelMapper m = new ModelMapper();
