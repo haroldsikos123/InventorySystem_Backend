@@ -56,15 +56,8 @@ public class UsuarioController {
             usuario.setEmpresa(null);
         }
 
-        // 3. LÓGICA DE ROL POR DEFECTO (ID 1)  <-- ¡AÑADIR ESTO!
-        try {
-            Rol rolPorDefecto = rolService.listId(1L); // Busca el Rol con ID 1
-            usuario.setRol(rolPorDefecto); // Asigna el rol
-        } catch (Exception e) {
-            System.err.println("Error al asignar rol por defecto (ID 1): " + e.getMessage());
-            usuario.setRol(null);
-        }
-        // FIN DE LA MODIFICACIÓN
+        // 3. NO ASIGNAMOS ROL - El servicio asignará GUEST si es necesario
+        usuario.setRol(null);
 
         // 4. GUARDAR USUARIO
         usuarioService.insert(usuario); // El servicio encriptará la contraseña

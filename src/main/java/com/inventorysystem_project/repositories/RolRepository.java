@@ -7,5 +7,7 @@ import com.inventorysystem_project.entities.Rol;
 
 @Repository
 public interface RolRepository extends JpaRepository<Rol, Long> {
+	// --- AÑADIDO: buscar rol por nombre ---
+	Rol findByRol(String rol);
 
 }

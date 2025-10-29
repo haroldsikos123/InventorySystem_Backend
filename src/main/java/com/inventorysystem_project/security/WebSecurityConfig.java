@@ -1,6 +1,4 @@
 package com.inventorysystem_project.security;
-
-import com.inventorysystem_project.serviceimplements.JwtUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -9,13 +7,13 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -39,8 +37,7 @@ public class WebSecurityConfig {
     @Qualifier("handlerExceptionResolver")
     private HandlerExceptionResolver exceptionResolver;
 
-    @Autowired
-    private JwtUserDetailsService jwtUserDetailsService;
+    
 
     @Bean
     public static PasswordEncoder passwordEncoder() {
@@ -65,14 +62,28 @@ public class WebSecurityConfig {
                 .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/authenticate/**",
-                    "/roles/**",
-                    "/usuarios/registrar",
-                    "/usuarios/listar"
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
+                    .requestMatchers(
+                        "/authenticate/**",
+                        "/roles/**",
+                        "/usuarios/registrar",
+                        "/usuarios/listar"
+                    ).permitAll()
+
+                    // REGLA 1: Permitir a cualquier autenticado crear tickets (POST a /api/soporte/tickets)
+                    .requestMatchers(HttpMethod.POST, "/api/soporte/tickets").authenticated()
+                    // REGLA 2: GUEST (y otros) pueden leer recursos con GET
+                    .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
+
+                    // REGLA 3: Comentarios y POSTs dentro de /api/soporte/tickets/** requieren al menos USER
+                    .requestMatchers(HttpMethod.POST, "/api/soporte/tickets/**").hasAnyAuthority("USER", "ADMIN", "SOPORTE_N1", "SOPORTE_N2")
+
+                    // REGLA 4: USER y superiores tienen permiso CUD en el resto de la API
+                    .requestMatchers(HttpMethod.POST, "/api/**").hasAnyAuthority("USER", "ADMIN", "SOPORTE_N1", "SOPORTE_N2", "GESTOR_CAMBIOS", "CAB_MEMBER", "PROJECT_MANAGER")
+                    .requestMatchers(HttpMethod.PUT, "/api/**").hasAnyAuthority("USER", "ADMIN", "SOPORTE_N1", "SOPORTE_N2", "GESTOR_CAMBIOS", "CAB_MEMBER", "PROJECT_MANAGER")
+                    .requestMatchers(HttpMethod.DELETE, "/api/**").hasAnyAuthority("USER", "ADMIN", "SOPORTE_N1", "SOPORTE_N2", "GESTOR_CAMBIOS", "CAB_MEMBER", "PROJECT_MANAGER")
+
+                    .anyRequest().authenticated()
+                )
 
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -63,12 +63,13 @@ public class TicketSoporteController {
             List<TicketSoporteDTO> tickets;
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             
-            // Verificar si el usuario solo tiene el rol USER
-            boolean soloUser = authentication.getAuthorities().size() == 1 &&
+            // Verificar si el usuario tiene rol restringido (USER o GUEST)
+            boolean esUsuarioRestringido = authentication.getAuthorities().size() == 1 &&
                              authentication.getAuthorities().stream()
-                                 .anyMatch(a -> a.getAuthority().equals("USER"));
+                                 .anyMatch(a -> a.getAuthority().equals("USER") || 
+                                              a.getAuthority().equals("GUEST"));
 
-            if (soloUser) {
+            if (esUsuarioRestringido) {
                 UserDetails userDetails = (UserDetails) authentication.getPrincipal();
                 Usuario usuarioActual = usuarioService.findByUsername(userDetails.getUsername());
                 if (usuarioActual == null) {
