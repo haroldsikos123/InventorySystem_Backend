@@ -1,6 +1,9 @@
 package com.inventorysystem_project.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class EmpresaDTO {
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private String nombre;
     private Long ruc;

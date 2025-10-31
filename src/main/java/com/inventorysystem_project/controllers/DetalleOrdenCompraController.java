@@ -5,10 +5,14 @@ import com.inventorysystem_project.entities.DetalleOrdenCompra;
 import com.inventorysystem_project.serviceinterfaces.IDetalleOrdenCompraService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -20,10 +24,26 @@ public class DetalleOrdenCompraController {
 
     @PostMapping("/registrar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public void registrar(@RequestBody DetalleOrdenCompraDTO dto) {
-        ModelMapper m = new ModelMapper();
-        DetalleOrdenCompra detalleOrdenCompra = m.map(dto, DetalleOrdenCompra.class);
-        detalleOrdenCompraService.insert(detalleOrdenCompra);
+    public ResponseEntity<?> registrar(@RequestBody DetalleOrdenCompraDTO dto) {
+        try {
+            // PROTECCIÓN CONTRA DUPLICACIÓN DE ID
+            dto.setId(null);
+            
+            ModelMapper m = new ModelMapper();
+            DetalleOrdenCompra detalleOrdenCompra = m.map(dto, DetalleOrdenCompra.class);
+            detalleOrdenCompraService.insert(detalleOrdenCompra);
+            
+            // Mapear la respuesta con el ID generado
+            DetalleOrdenCompraDTO responseDTO = m.map(detalleOrdenCompra, DetalleOrdenCompraDTO.class);
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
+            
+        } catch (DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "Error de integridad de datos: " + ex.getMostSpecificCause().getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error interno del servidor: " + ex.getMessage()));
+        }
     }
 
     @GetMapping("/listar")

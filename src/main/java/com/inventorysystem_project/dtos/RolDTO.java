@@ -1,9 +1,11 @@
 package com.inventorysystem_project.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.inventorysystem_project.entities.Usuario;
 
 public class RolDTO {
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private String rol;
 

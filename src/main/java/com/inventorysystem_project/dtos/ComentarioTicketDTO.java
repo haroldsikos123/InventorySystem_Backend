@@ -1,8 +1,10 @@
 package com.inventorysystem_project.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 
 public class ComentarioTicketDTO {
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private Long ticketId; // ID del ticket al que pertenece
     

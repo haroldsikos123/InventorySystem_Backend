@@ -11,8 +11,11 @@ import com.inventorysystem_project.serviceinterfaces.IOrdenCompraService;
 import com.inventorysystem_project.serviceinterfaces.IDetalleOrdenCompraService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
+import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -59,43 +62,61 @@ public class OrdenCompraController {
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
     @Transactional
 // CAMBIO 1: La función ya no es 'void'. Ahora devuelve una respuesta con la orden creada.
-    public ResponseEntity<OrdenCompraDTO> registrar(@RequestBody OrdenCompraDTO dto) {
-        ModelMapper m = new ModelMapper();
-
-        if (dto.getDetalles() == null || dto.getDetalles().isEmpty()) {
-            throw new IllegalArgumentException("La orden de compra debe tener al menos un detalle.");
-        }
-
-        OrdenCompra ordenCompra = m.map(dto, OrdenCompra.class);
-        ordenCompra.setDetalles(null);
-
-        // Guardamos la cabecera y la re-asignamos para obtenerla con su ID generado
-        ordenCompra = ordenCompraService.insert(ordenCompra);
-
-        // Procesamos y guardamos los detalles
-        for (DetalleOrdenCompraDTO detalleDTO : dto.getDetalles()) {
-            if (detalleDTO.getMateriaPrimaId() == null) {
-                throw new IllegalArgumentException("El producto en la orden de compra no tiene un ID válido (es nulo).");
+    public ResponseEntity<?> registrar(@RequestBody OrdenCompraDTO dto) {
+        try {
+            // PROTECCIÓN CONTRA DUPLICACIÓN DE ID
+            dto.setId(null);
+            if (dto.getDetalles() != null) {
+                dto.getDetalles().forEach(detalle -> detalle.setId(null));
             }
-            DetalleOrdenCompra detalle = new DetalleOrdenCompra();
-            detalle.setOrdenCompra(ordenCompra);
+            
+            ModelMapper m = new ModelMapper();
 
-            MateriaPrima materiaPrimaPersistente = materiaPrimaService.listId(detalleDTO.getMateriaPrimaId());
-            if (materiaPrimaPersistente == null) {
-                throw new RuntimeException("Materia Prima con ID " + detalleDTO.getMateriaPrimaId() + " no encontrada.");
+            if (dto.getDetalles() == null || dto.getDetalles().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "La orden de compra debe tener al menos un detalle"));
             }
-            detalle.setMateriaPrima(materiaPrimaPersistente);
-            detalle.setCantidad(detalleDTO.getCantidad());
-            detalleOrdenCompraService.insert(detalle);
+
+            OrdenCompra ordenCompra = m.map(dto, OrdenCompra.class);
+            ordenCompra.setDetalles(null);
+
+            // Guardamos la cabecera y la re-asignamos para obtenerla con su ID generado
+            ordenCompra = ordenCompraService.insert(ordenCompra);
+
+            // Procesamos y guardamos los detalles
+            for (DetalleOrdenCompraDTO detalleDTO : dto.getDetalles()) {
+                if (detalleDTO.getMateriaPrimaId() == null) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "El producto en la orden de compra no tiene un ID válido (es nulo)"));
+                }
+                DetalleOrdenCompra detalle = new DetalleOrdenCompra();
+                detalle.setOrdenCompra(ordenCompra);
+
+                MateriaPrima materiaPrimaPersistente = materiaPrimaService.listId(detalleDTO.getMateriaPrimaId());
+                if (materiaPrimaPersistente == null) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Materia Prima con ID " + detalleDTO.getMateriaPrimaId() + " no encontrada"));
+                }
+                detalle.setMateriaPrima(materiaPrimaPersistente);
+                detalle.setCantidad(detalleDTO.getCantidad());
+                detalleOrdenCompraService.insert(detalle);
+            }
+
+            // CAMBIO 2: Preparamos y devolvemos la orden completa al frontend.
+            // Buscamos la orden recién creada para que incluya todos sus detalles.
+            OrdenCompra ordenCompleta = ordenCompraService.listId(ordenCompra.getId());
+            OrdenCompraDTO ordenCompletaDTO = m.map(ordenCompleta, OrdenCompraDTO.class);
+
+            // Devolvemos el objeto DTO con un estado HTTP 201 (Created), que es la práctica correcta.
+            return ResponseEntity.status(HttpStatus.CREATED).body(ordenCompletaDTO);
+            
+        } catch (DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "Error de integridad de datos: " + ex.getMostSpecificCause().getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error interno del servidor: " + ex.getMessage()));
         }
-
-        // CAMBIO 2: Preparamos y devolvemos la orden completa al frontend.
-        // Buscamos la orden recién creada para que incluya todos sus detalles.
-        OrdenCompra ordenCompleta = ordenCompraService.listId(ordenCompra.getId());
-        OrdenCompraDTO ordenCompletaDTO = m.map(ordenCompleta, OrdenCompraDTO.class);
-
-        // Devolvemos el objeto DTO con un estado HTTP 201 (Created), que es la práctica correcta.
-        return new ResponseEntity<>(ordenCompletaDTO, HttpStatus.CREATED);
     }
     @GetMapping("/listar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")

@@ -4,9 +4,11 @@ package com.inventorysystem_project.dtos;
 import com.inventorysystem_project.entities.enums.EstadoTicket;
 import com.inventorysystem_project.entities.enums.PrioridadTicket;
 import com.inventorysystem_project.entities.enums.TipoTicket;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 
 public class TicketSoporteDTO {
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private String formattedId; // ID formateado como #INC-123
     private LocalDateTime fechaReporte;

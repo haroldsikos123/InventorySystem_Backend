@@ -1,7 +1,10 @@
 package com.inventorysystem_project.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class DetalleOrdenCompraDTO {
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private Long ordenCompraId;
     private Long materiaPrimaId;

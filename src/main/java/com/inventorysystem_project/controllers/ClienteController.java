@@ -7,10 +7,13 @@ import com.inventorysystem_project.serviceinterfaces.IClienteService;
 import com.inventorysystem_project.serviceinterfaces.IEmpresaService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -25,19 +28,37 @@ public class ClienteController {
 
     @PostMapping("/registrar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public void registrar(@RequestBody ClienteDTO dto) {
-        ModelMapper m = new ModelMapper();
-        Cliente cliente = m.map(dto, Cliente.class);
+    public ResponseEntity<?> registrar(@RequestBody ClienteDTO dto) {
+        try {
+            ModelMapper m = new ModelMapper();
+            Cliente cliente = m.map(dto, Cliente.class);
+            
+            // Asegurar que el ID sea null para nuevos clientes
+            cliente.setId(null);
 
-        // Establecer la empresa manualmente ya que el DTO solo tiene el ID
-        if (dto.getEmpresaId() != null) {
-            Empresa empresa = empresaService.listId(dto.getEmpresaId());
-            if (empresa != null) {
-                cliente.setEmpresa(empresa);
+            // Establecer la empresa manualmente ya que el DTO solo tiene el ID
+            if (dto.getEmpresaId() != null) {
+                Empresa empresa = empresaService.listId(dto.getEmpresaId());
+                if (empresa != null) {
+                    cliente.setEmpresa(empresa);
+                } else {
+                    return ResponseEntity.badRequest().body(Map.of("error", "La empresa especificada no existe"));
+                }
             }
-        }
 
-        clienteService.insert(cliente);
+            clienteService.insert(cliente);
+            return ResponseEntity.ok(Map.of("mensaje", "Cliente registrado exitosamente"));
+        } catch (DataIntegrityViolationException e) {
+            String mensaje = "Error de integridad de datos: ";
+            if (e.getMessage().contains("llave duplicada")) {
+                mensaje += "Ya existe un cliente con esos datos.";
+            } else {
+                mensaje += "Los datos no cumplen con las restricciones.";
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", mensaje));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Error al registrar el cliente: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/listar")  // Ruta para listar todos los clientes

@@ -40,4 +40,13 @@ public interface ITicketSoporteService {
      * @return Lista de actividades combinadas ordenadas por fecha descendente.
      */
     List<com.inventorysystem_project.dtos.ActividadCombinadaDTO> getActividadesCombinadas(Long ticketId);
+    
+    /**
+     * Actualiza solo la descripción y solución de un ticket (para usuarios limitados).
+     * @param ticketId El ID del ticket.
+     * @param nuevaDescripcion La nueva descripción.
+     * @param nuevaSolucion La nueva solución (puede ser null).
+     * @return El DTO del ticket actualizado.
+     */
+    TicketSoporteDTO actualizarDescripcionYSolucion(Long ticketId, String nuevaDescripcion, String nuevaSolucion);
 }

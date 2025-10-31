@@ -1,10 +1,12 @@
 package com.inventorysystem_project.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Date;
 
 public class UsuarioDTO {
 
-    private Long id;  // Cambié a String
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long id;
     private String nombre;
     private String apellido;
     private String correo;

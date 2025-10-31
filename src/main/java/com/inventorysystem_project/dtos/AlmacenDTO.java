@@ -1,7 +1,10 @@
 package com.inventorysystem_project.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class AlmacenDTO {
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private Long empresaId; // Solo el ID de la empresa
     private String nombre;

@@ -1,8 +1,10 @@
 package com.inventorysystem_project.dtos;
 
 import com.inventorysystem_project.entities.enums.EstadoProblema; // Importa el enum
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ErrorConocidoDTO {
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private String formattedId; // ID formateado como #PRB-123
     private String descripcionError;

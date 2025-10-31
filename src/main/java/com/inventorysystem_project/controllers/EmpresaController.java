@@ -5,10 +5,13 @@ import com.inventorysystem_project.entities.Empresa;
 import com.inventorysystem_project.serviceinterfaces.IEmpresaService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -20,10 +23,27 @@ public class EmpresaController {
 
     @PostMapping("/registrar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public void registrar(@RequestBody EmpresaDTO dto) {
-        ModelMapper m = new ModelMapper();
-        Empresa empresa = m.map(dto, Empresa.class);
-        empresaService.insert(empresa);
+    public ResponseEntity<?> registrar(@RequestBody EmpresaDTO dto) {
+        try {
+            ModelMapper m = new ModelMapper();
+            Empresa empresa = m.map(dto, Empresa.class);
+            
+            // Asegurar que el ID sea null para nuevas empresas
+            empresa.setId(null);
+            
+            empresaService.insert(empresa);
+            return ResponseEntity.ok(Map.of("mensaje", "Empresa registrada exitosamente"));
+        } catch (DataIntegrityViolationException e) {
+            String mensaje = "Error de integridad de datos: ";
+            if (e.getMessage().contains("llave duplicada")) {
+                mensaje += "Ya existe una empresa con esos datos.";
+            } else {
+                mensaje += "Los datos no cumplen con las restricciones.";
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", mensaje));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Error al registrar la empresa: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/listar")

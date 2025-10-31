@@ -1,9 +1,11 @@
 package com.inventorysystem_project.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Date;
 
 public class MovimientoInventarioProductoTerminadoDTO {
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private Long almacenId;
     private Long productoTerminadoId;

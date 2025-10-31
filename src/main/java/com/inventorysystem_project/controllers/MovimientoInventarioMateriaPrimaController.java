@@ -5,10 +5,14 @@ import com.inventorysystem_project.entities.MovimientoInventarioMateriaPrima;
 import com.inventorysystem_project.serviceinterfaces.IMovimientoInventarioMateriaPrimaService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -21,10 +25,26 @@ public class MovimientoInventarioMateriaPrimaController {
     // Registrar un nuevo movimiento
     @PostMapping("/registrar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public void registrar(@RequestBody MovimientoInventarioMateriaPrimaDTO dto) {
-        ModelMapper m = new ModelMapper();
-        MovimientoInventarioMateriaPrima movimiento = m.map(dto, MovimientoInventarioMateriaPrima.class);
-        movimientoService.insert(movimiento);
+    public ResponseEntity<?> registrar(@RequestBody MovimientoInventarioMateriaPrimaDTO dto) {
+        try {
+            // PROTECCIÓN CONTRA DUPLICACIÓN DE ID
+            dto.setId(null);
+            
+            ModelMapper m = new ModelMapper();
+            MovimientoInventarioMateriaPrima movimiento = m.map(dto, MovimientoInventarioMateriaPrima.class);
+            movimientoService.insert(movimiento);
+            
+            // Mapear la respuesta con el ID generado
+            MovimientoInventarioMateriaPrimaDTO responseDTO = m.map(movimiento, MovimientoInventarioMateriaPrimaDTO.class);
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
+            
+        } catch (DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "Error de integridad de datos: " + ex.getMostSpecificCause().getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error interno del servidor: " + ex.getMessage()));
+        }
     }
 
     // Listar todos los movimientos

@@ -2,13 +2,17 @@ package com.inventorysystem_project.controllers;
 
 import com.inventorysystem_project.dtos.ProveedorDTO;
 import com.inventorysystem_project.entities.Proveedor;
+import com.inventorysystem_project.exceptions.DataIntegrityException;
 import com.inventorysystem_project.serviceinterfaces.IProveedorService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -20,10 +24,27 @@ public class ProveedorController {
 
     @PostMapping("/registrar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public void registrar(@RequestBody ProveedorDTO dto) {
-        ModelMapper m = new ModelMapper();
-        Proveedor proveedor = m.map(dto, Proveedor.class);
-        proveedorService.insert(proveedor);
+    public ResponseEntity<?> registrar(@RequestBody ProveedorDTO dto) {
+        try {
+            ModelMapper m = new ModelMapper();
+            Proveedor proveedor = m.map(dto, Proveedor.class);
+            
+            // Asegurar que el ID sea null para nuevos proveedores
+            proveedor.setId(null);
+            
+            proveedorService.insert(proveedor);
+            return ResponseEntity.ok(Map.of("mensaje", "Proveedor registrado exitosamente"));
+        } catch (DataIntegrityViolationException e) {
+            String mensaje = "Error de integridad de datos: ";
+            if (e.getMessage().contains("llave duplicada")) {
+                mensaje += "Ya existe un proveedor con esos datos.";
+            } else {
+                mensaje += "Los datos no cumplen con las restricciones.";
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", mensaje));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Error al registrar el proveedor: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/listar")
@@ -45,8 +66,17 @@ public class ProveedorController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public void eliminar(@PathVariable("id") Long id) {
-        proveedorService.delete(id);
+    public ResponseEntity<?> eliminar(@PathVariable("id") Long id) {
+        try {
+            proveedorService.delete(id);
+            return ResponseEntity.ok().build();
+        } catch (DataIntegrityException e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Error de integridad de datos", "message", e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Error", "message", e.getMessage()));
+        }
     }
 
     @PutMapping

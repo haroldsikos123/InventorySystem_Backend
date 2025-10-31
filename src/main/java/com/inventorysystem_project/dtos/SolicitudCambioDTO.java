@@ -3,8 +3,10 @@ package com.inventorysystem_project.dtos;
 // Importa los enums
 import com.inventorysystem_project.entities.enums.EstadoCambio;
 import com.inventorysystem_project.entities.enums.TipoCambio;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class SolicitudCambioDTO {
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private String formattedId; // ID formateado como #CAB-123
     private String titulo;

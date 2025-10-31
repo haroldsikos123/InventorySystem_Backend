@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/soporte/ticketsoporte")
+@RequestMapping("/api/soporte/tickets")
 public class TicketSoporteController {
 
     @Autowired
@@ -107,7 +107,7 @@ public class TicketSoporteController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or hasAuthority('SOPORTE_N2')")
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or hasAuthority('SOPORTE_N2') or hasAuthority('GESTOR_CAMBIOS') or hasAuthority('CAB_MEMBER') or hasAuthority('PROJECT_MANAGER')")
     public ResponseEntity<TicketSoporteDTO> actualizarTicket(@PathVariable Long id, @RequestBody TicketSoporteDTO ticketSoporteDTO) {
          try {
             if (ticketSoporteDTO.getDescripcion() == null || ticketSoporteDTO.getDescripcion().trim().isEmpty()) {
@@ -141,7 +141,7 @@ public class TicketSoporteController {
     }
 
     @PutMapping("/{ticketId}/estado")
-    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or hasAuthority('SOPORTE_N2') or @ticketSoporteServiceImplement.obtenerTicketPorId(#ticketId).responsableAsignadoId == principal.id")
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('SOPORTE_N1') or hasAuthority('SOPORTE_N2') or hasAuthority('GESTOR_CAMBIOS') or hasAuthority('CAB_MEMBER') or hasAuthority('PROJECT_MANAGER')")
     public ResponseEntity<TicketSoporteDTO> cambiarEstadoTicket(@PathVariable Long ticketId, @RequestBody Map<String, String> payload) {
         String nuevoEstado = payload.get("estado");
         if (nuevoEstado == null || nuevoEstado.trim().isEmpty()) {
@@ -238,6 +238,46 @@ public class TicketSoporteController {
         } catch (Exception e) {
             System.err.println("Error al calificar ticket ID " + ticketId + ": " + e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado al calificar el ticket.", e);
+        }
+    }
+
+    /**
+     * Endpoint limitado para usuarios USER/GUEST - Solo pueden actualizar descripción/solución de sus propios tickets
+     * PATCH /api/tickets/{id}/descripcion
+     */
+    @PatchMapping("/{id}/descripcion")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<TicketSoporteDTO> actualizarDescripcionTicket(@PathVariable Long id, @RequestBody Map<String, String> payload, Authentication authentication) {
+        try {
+            String nuevaDescripcion = payload.get("descripcion");
+            String nuevaSolucion = payload.get("solucion");
+            
+            if (nuevaDescripcion == null || nuevaDescripcion.trim().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La descripción es obligatoria.");
+            }
+
+            // Verificar si el usuario es el creador del ticket (solo para USER/GUEST)
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean esUsuarioLimitado = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("USER") || a.getAuthority().equals("GUEST"));
+            
+            if (esUsuarioLimitado) {
+                TicketSoporteDTO ticketActual = ticketService.obtenerTicketPorId(id);
+                String usernameActual = auth.getName();
+                
+                // Verificar que sea el creador del ticket
+                if (!ticketActual.getUsuarioReportaNombre().contains(usernameActual)) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo puedes actualizar tus propios tickets.");
+                }
+            }
+
+            TicketSoporteDTO ticketActualizado = ticketService.actualizarDescripcionYSolucion(id, nuevaDescripcion, nuevaSolucion);
+            return new ResponseEntity<>(ticketActualizado, HttpStatus.OK);
+        } catch (EntityNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        } catch (Exception e) {
+            System.err.println("Error al actualizar descripción del ticket ID " + id + ": " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al actualizar la descripción del ticket.", e);
         }
     }
 

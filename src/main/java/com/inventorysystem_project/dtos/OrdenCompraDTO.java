@@ -4,9 +4,11 @@ import com.inventorysystem_project.entities.DetalleOrdenCompra;
 
 import java.util.Date;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class OrdenCompraDTO {
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
     private Long empresaId;
     private Long proveedorId;

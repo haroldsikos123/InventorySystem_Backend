@@ -435,4 +435,22 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
 
         return listaCombinada;
     }
+
+    @Override
+    public TicketSoporteDTO actualizarDescripcionYSolucion(Long ticketId, String nuevaDescripcion, String nuevaSolucion) {
+        TicketSoporte ticket = ticketRepo.findById(ticketId)
+                .orElseThrow(() -> new EntityNotFoundException("Ticket no encontrado con ID: " + ticketId));
+
+        // Solo actualizar descripción y solución, NO estado, prioridad o asignación
+        ticket.setDescripcion(nuevaDescripcion);
+        if (nuevaSolucion != null && !nuevaSolucion.trim().isEmpty()) {
+            ticket.setSolucion(nuevaSolucion);
+            registrarActividad(ticket, "Descripción y solución actualizadas por el usuario");
+        } else {
+            registrarActividad(ticket, "Descripción actualizada por el usuario");
+        }
+
+        TicketSoporte ticketGuardado = ticketRepo.save(ticket);
+        return convertToDto(ticketGuardado);
+    }
 }

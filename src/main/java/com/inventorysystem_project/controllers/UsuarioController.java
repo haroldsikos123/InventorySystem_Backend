@@ -9,10 +9,13 @@ import com.inventorysystem_project.serviceinterfaces.IRolService;
 import com.inventorysystem_project.serviceinterfaces.IUsuarioService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus; // <-- Importante
 import org.springframework.http.ResponseEntity; // <-- Importante
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -37,44 +40,58 @@ public class UsuarioController {
 
  @PostMapping("/registrar")
     // @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public ResponseEntity<UsuarioDTO> registrar(@RequestBody UsuarioDTO dto) {
-        
-        // 1. VALIDACIÓN DE DUPLICADOS
-        if (usuarioService.findByUsername(dto.getUsername()) != null) {
-            return new ResponseEntity<>(HttpStatus.CONFLICT);
-        }
-        if (usuarioService.findByCorreo(dto.getCorreo()) != null) {
-            return new ResponseEntity<>(HttpStatus.PRECONDITION_FAILED); 
-        }
-        ModelMapper m = new ModelMapper();
-        Usuario usuario = m.map(dto, Usuario.class);
-
-        // 2. LÓGICA DE EMPRESA POR DEFECTO (ID 1)
+    public ResponseEntity<?> registrar(@RequestBody UsuarioDTO dto) {
         try {
-            Empresa empresaPorDefecto = empresaService.listId(1L); 
-            usuario.setEmpresa(empresaPorDefecto); 
-        } catch (Exception e) {
-            usuario.setEmpresa(null);
-        }
+            // PROTECCIÓN CONTRA DUPLICACIÓN DE ID
+            dto.setId(null);
+            
+            // 1. VALIDACIÓN DE DUPLICADOS
+            if (usuarioService.findByUsername(dto.getUsername()) != null) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "El nombre de usuario '" + dto.getUsername() + "' ya existe"));
+            }
+            if (usuarioService.findByCorreo(dto.getCorreo()) != null) {
+                return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED)
+                    .body(Map.of("error", "El correo '" + dto.getCorreo() + "' ya está registrado"));
+            }
+            
+            ModelMapper m = new ModelMapper();
+            Usuario usuario = m.map(dto, Usuario.class);
 
-        // 3. NO ASIGNAMOS ROL - El servicio asignará GUEST si es necesario
-        usuario.setRol(null);
+            // 2. LÓGICA DE EMPRESA POR DEFECTO (ID 1)
+            try {
+                Empresa empresaPorDefecto = empresaService.listId(1L); 
+                usuario.setEmpresa(empresaPorDefecto); 
+            } catch (Exception e) {
+                usuario.setEmpresa(null);
+            }
 
-        // 4. GUARDAR USUARIO
-        usuarioService.insert(usuario); // El servicio encriptará la contraseña
+            // 3. NO ASIGNAMOS ROL - El servicio asignará GUEST si es necesario
+            usuario.setRol(null);
 
-        // 5. DEVOLVER RESPUESTA
-        UsuarioDTO usuarioGuardadoDTO = m.map(usuario, UsuarioDTO.class);
-        
-        // Asignar IDs al DTO de respuesta
-        if (usuario.getRol() != null) {
-            usuarioGuardadoDTO.setRolId(usuario.getRol().getId());
+            // 4. GUARDAR USUARIO
+            usuarioService.insert(usuario); // El servicio encriptará la contraseña
+
+            // 5. DEVOLVER RESPUESTA
+            UsuarioDTO usuarioGuardadoDTO = m.map(usuario, UsuarioDTO.class);
+            
+            // Asignar IDs al DTO de respuesta
+            if (usuario.getRol() != null) {
+                usuarioGuardadoDTO.setRolId(usuario.getRol().getId());
+            }
+            if (usuario.getEmpresa() != null) {
+                usuarioGuardadoDTO.setEmpresaId(usuario.getEmpresa().getId());
+            }
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(usuarioGuardadoDTO);
+            
+        } catch (DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "Error de integridad de datos: " + ex.getMostSpecificCause().getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error interno del servidor: " + ex.getMessage()));
         }
-        if (usuario.getEmpresa() != null) {
-            usuarioGuardadoDTO.setEmpresaId(usuario.getEmpresa().getId());
-        }
-        
-        return new ResponseEntity<>(usuarioGuardadoDTO, HttpStatus.CREATED);
     }
 
     @GetMapping("/listar")
