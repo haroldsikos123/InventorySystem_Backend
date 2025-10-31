@@ -2,6 +2,7 @@ package com.inventorysystem_project.controllers;
 
 import com.inventorysystem_project.dtos.MateriaPrimaDTO;
 import com.inventorysystem_project.entities.MateriaPrima;
+import com.inventorysystem_project.services.RetryService;
 import com.inventorysystem_project.serviceinterfaces.IMateriaPrimaService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,9 @@ public class MateriaPrimaController {
 
     @Autowired
     private IMateriaPrimaService materiaPrimaService;
+    
+    @Autowired
+    private RetryService retryService;
 
     @PostMapping("/registrar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
@@ -31,7 +35,12 @@ public class MateriaPrimaController {
             // Asegurar que el ID sea null para nueva materia prima
             materiaPrima.setId(null);
             
-            materiaPrimaService.insert(materiaPrima);
+            // Usar RetryService para manejar secuencias desincronizadas automáticamente
+            retryService.executeWithRetry(() -> {
+                materiaPrimaService.insert(materiaPrima);
+                return materiaPrima;
+            }, "Materia Prima");
+            
             return ResponseEntity.ok(Map.of("mensaje", "Materia prima registrada exitosamente"));
         } catch (DataIntegrityViolationException e) {
             String mensaje = "Error de integridad de datos: ";

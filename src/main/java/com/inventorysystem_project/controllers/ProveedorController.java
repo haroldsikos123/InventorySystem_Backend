@@ -3,6 +3,7 @@ package com.inventorysystem_project.controllers;
 import com.inventorysystem_project.dtos.ProveedorDTO;
 import com.inventorysystem_project.entities.Proveedor;
 import com.inventorysystem_project.exceptions.DataIntegrityException;
+import com.inventorysystem_project.services.RetryService;
 import com.inventorysystem_project.serviceinterfaces.IProveedorService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ public class ProveedorController {
 
     @Autowired
     private IProveedorService proveedorService;
+    
+    @Autowired
+    private RetryService retryService;
 
     @PostMapping("/registrar")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
@@ -32,7 +36,12 @@ public class ProveedorController {
             // Asegurar que el ID sea null para nuevos proveedores
             proveedor.setId(null);
             
-            proveedorService.insert(proveedor);
+            // Usar RetryService para manejar secuencias desincronizadas automáticamente
+            retryService.executeWithRetry(() -> {
+                proveedorService.insert(proveedor);
+                return proveedor;
+            }, "Proveedor");
+            
             return ResponseEntity.ok(Map.of("mensaje", "Proveedor registrado exitosamente"));
         } catch (DataIntegrityViolationException e) {
             String mensaje = "Error de integridad de datos: ";
