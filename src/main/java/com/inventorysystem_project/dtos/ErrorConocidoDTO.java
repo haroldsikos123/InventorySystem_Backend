@@ -4,6 +4,7 @@ import com.inventorysystem_project.entities.enums.EstadoProblema; // Importa el 
 
 public class ErrorConocidoDTO {
     private Long id;
+    private String formattedId; // ID formateado como #PRB-123
     private String descripcionError;
     private String sintomas;
     private String causaRaiz;
@@ -65,5 +66,13 @@ public class ErrorConocidoDTO {
 
     public void setEstado(EstadoProblema estado) {
         this.estado = estado;
+    }
+
+    public String getFormattedId() {
+        return formattedId;
+    }
+
+    public void setFormattedId(String formattedId) {
+        this.formattedId = formattedId;
     }
 }

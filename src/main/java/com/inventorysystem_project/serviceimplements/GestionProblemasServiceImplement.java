@@ -23,7 +23,15 @@ public class GestionProblemasServiceImplement implements IGestionProblemasServic
     private ModelMapper modelMapper;
 
     private ErrorConocidoDTO convertToDto(ErrorConocido error) {
-        return modelMapper.map(error, ErrorConocidoDTO.class);
+        ErrorConocidoDTO dto = modelMapper.map(error, ErrorConocidoDTO.class);
+        
+        // --- LÓGICA AÑADIDA PARA ID FORMATEADO ---
+        if (error.getId() != null) {
+            dto.setFormattedId("#PRB-" + error.getId());
+        }
+        // --- FIN LÓGICA AÑADIDA ---
+        
+        return dto;
     }
 
     @Override

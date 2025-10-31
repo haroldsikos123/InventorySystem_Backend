@@ -6,6 +6,7 @@ import com.inventorysystem_project.entities.enums.TipoCambio;
 
 public class SolicitudCambioDTO {
     private Long id;
+    private String formattedId; // ID formateado como #CAB-123
     private String titulo;
     private String descripcion;
     private String justificacion;
@@ -114,5 +115,13 @@ public class SolicitudCambioDTO {
 
     public void setTipoCambio(TipoCambio tipoCambio) {
         this.tipoCambio = tipoCambio;
+    }
+
+    public String getFormattedId() {
+        return formattedId;
+    }
+
+    public void setFormattedId(String formattedId) {
+        this.formattedId = formattedId;
     }
 }

@@ -3,12 +3,16 @@ package com.inventorysystem_project.serviceimplements;
 import com.inventorysystem_project.entities.Usuario;
 import com.inventorysystem_project.entities.TicketSoporte;
 import com.inventorysystem_project.entities.ComentarioTicket;
+import com.inventorysystem_project.entities.TicketActividad; // Nueva
 import com.inventorysystem_project.entities.enums.EstadoTicket;
 import com.inventorysystem_project.repositories.UsuarioRepository;
 import com.inventorysystem_project.repositories.TicketSoporteRepository;
 import com.inventorysystem_project.repositories.ComentarioTicketRepository;
+import com.inventorysystem_project.repositories.TicketActividadRepository; // Nueva
 import com.inventorysystem_project.dtos.TicketSoporteDTO;
 import com.inventorysystem_project.dtos.ComentarioTicketDTO;
+import com.inventorysystem_project.dtos.ActividadCombinadaDTO; // Nueva
+
 import com.inventorysystem_project.serviceinterfaces.ITicketSoporteService;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -16,8 +20,13 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList; // Importar
+import java.util.List; // Importar
+import java.util.Comparator; // Importar
+import java.util.Objects; // Importar
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,11 +44,21 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
     @Autowired
     private UsuarioRepository usuarioRepo;
     
+    // --- INYECTAR NUEVO REPOSITORIO ---
+    @Autowired
+    private TicketActividadRepository ticketActividadRepository;
+    
     @Autowired
     private ModelMapper modelMapper;
 
     private TicketSoporteDTO convertToDto(TicketSoporte ticket) {
         TicketSoporteDTO dto = modelMapper.map(ticket, TicketSoporteDTO.class);
+        
+        // --- LÓGICA AÑADIDA PARA ID FORMATEADO ---
+        if (ticket.getId() != null) {
+            dto.setFormattedId("#INC-" + ticket.getId());
+        }
+        // --- FIN LÓGICA AÑADIDA ---
         
         if (ticket.getUsuarioReporta() != null) {
             dto.setUsuarioReportaId(ticket.getUsuarioReporta().getId());
@@ -88,6 +107,17 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
         ticket.setEstado(EstadoTicket.ABIERTO);
 
         TicketSoporte ticketGuardado = ticketRepo.save(ticket);
+        
+        // Registrar actividad de creación
+        registrarActividad(ticketGuardado, "Ticket creado por " + usuarioReporta.getNombre() + " " + usuarioReporta.getApellido());
+        
+        // Si se asignó un responsable desde el inicio, registrar esa actividad también
+        if (ticketGuardado.getResponsableAsignado() != null) {
+            String nombreResponsable = ticketGuardado.getResponsableAsignado().getNombre() + " " + 
+                                     ticketGuardado.getResponsableAsignado().getApellido();
+            registrarActividad(ticketGuardado, "Responsable asignado: " + nombreResponsable);
+        }
+        
         return convertToDto(ticketGuardado);
     }
 
@@ -109,13 +139,26 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
              
              Usuario nuevoResponsable = usuarioRepo.findById(ticketSoporteDTO.getResponsableAsignadoId())
                 .orElseThrow(() -> new EntityNotFoundException("Usuario (responsable) no encontrado con ID: " + ticketSoporteDTO.getResponsableAsignadoId()));
+             
+             String nombreAnterior = ticketExistente.getResponsableAsignado() != null ? 
+                 ticketExistente.getResponsableAsignado().getNombre() + " " + ticketExistente.getResponsableAsignado().getApellido() : 
+                 "Sin asignar";
+             String nombreNuevo = nuevoResponsable.getNombre() + " " + nuevoResponsable.getApellido();
+             
              ticketExistente.setResponsableAsignado(nuevoResponsable);
+             registrarActividad(ticketExistente, String.format("Responsable asignado cambiado de '%s' a '%s'", 
+                 nombreAnterior, nombreNuevo));
         }
 
         // Actualizar estado si cambió
         if (ticketSoporteDTO.getEstado() != null && ticketExistente.getEstado() != ticketSoporteDTO.getEstado()) {
             EstadoTicket estadoNuevo = ticketSoporteDTO.getEstado();
             ticketExistente.setEstado(estadoNuevo);
+            
+            // Registrar actividad de cambio de estado
+            String descripcionActividad = String.format("Estado cambiado de %s a %s", 
+                estadoAnterior.toString(), estadoNuevo.toString());
+            registrarActividad(ticketExistente, descripcionActividad);
 
             // 1. LÓGICA DE INICIO DE ATENCIÓN
             // Si el ticket estaba Abierto y pasa a "EN_PROGRESO"
@@ -125,6 +168,7 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
                 ticketExistente.getFechaInicioAtencion() == null) {
                 
                 ticketExistente.setFechaInicioAtencion(LocalDateTime.now());
+                registrarActividad(ticketExistente, "Inicio de atención del ticket");
             }
 
             // 2. LÓGICA DE RESOLUCIÓN Y DURACIÓN
@@ -148,14 +192,20 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
                 // Calculamos la duración en minutos
                 long duracionEnMinutos = Duration.between(fechaInicio, fechaResolucion).toMinutes();
                 ticketExistente.setDuracionAtencionMinutos(duracionEnMinutos);
+                
+                registrarActividad(ticketExistente, "Ticket resuelto - Duración: " + duracionEnMinutos + " minutos");
             }
 
             // Lógica original para otros estados
             if (estadoNuevo == EstadoTicket.CERRADO && estadoAnterior != EstadoTicket.CERRADO) {
                 ticketExistente.setFechaCierre(LocalDateTime.now());
+                registrarActividad(ticketExistente, "Ticket cerrado");
             } else if (estadoNuevo != EstadoTicket.CERRADO && estadoNuevo != EstadoTicket.RESUELTO) {
                 // Si se reabre, limpiar fecha de cierre
                 ticketExistente.setFechaCierre(null);
+                if (estadoNuevo == EstadoTicket.ABIERTO) {
+                    registrarActividad(ticketExistente, "Ticket reabierto");
+                }
             }
         }
 
@@ -327,5 +377,62 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
         ticket.setCalificacion(calificacion);
         TicketSoporte ticketGuardado = ticketRepo.save(ticket);
         return convertToDto(ticketGuardado);
+    }
+
+    // --- MÉTODOS HELPER PARA REGISTRAR ACTIVIDADES ---
+    private void registrarActividad(TicketSoporte ticket, Long usuarioId, String descripcion) {
+        Usuario usuario = (usuarioId != null) ? usuarioRepo.findById(usuarioId).orElse(null) : null;
+        
+        TicketActividad actividad = new TicketActividad();
+        actividad.setTicketSoporte(ticket);
+        actividad.setUsuario(usuario);
+        actividad.setDescripcion(descripcion);
+        actividad.setFechaActividad(LocalDateTime.now());
+        
+        ticketActividadRepository.save(actividad);
+    }
+    
+    // Versión sobrecargada que obtiene el usuario actual del contexto de seguridad
+    private void registrarActividad(TicketSoporte ticket, String descripcion) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuarioActual = usuarioRepo.findByUsername(username);
+        Long usuarioId = (usuarioActual != null) ? usuarioActual.getId() : null;
+        registrarActividad(ticket, usuarioId, descripcion);
+    }
+
+    // --- MÉTODO NUEVO PARA OBTENER ACTIVIDADES COMBINADAS ---
+    @Override
+    public List<ActividadCombinadaDTO> getActividadesCombinadas(Long ticketId) {
+        List<ActividadCombinadaDTO> listaCombinada = new ArrayList<>();
+
+        // 1. Obtener Actividades (usando el nuevo repositorio)
+        List<TicketActividad> actividades = ticketActividadRepository.findByTicketSoporteIdOrderByFechaActividadDesc(ticketId);
+        for (TicketActividad act : actividades) {
+            String nombreUsuario = (act.getUsuario() != null) ? act.getUsuario().getNombre() : "Sistema";
+            listaCombinada.add(new ActividadCombinadaDTO(
+                "actividad", 
+                act.getDescripcion(), 
+                nombreUsuario, 
+                act.getFechaActividad()
+            ));
+        }
+
+        // 2. Obtener Comentarios (usando los campos correctos de tu entidad)
+        List<ComentarioTicket> comentarios = comentarioRepo.findByTicketIdOrderByFechaCreacionDesc(ticketId);
+        for (ComentarioTicket com : comentarios) {
+            String nombreUsuario = (com.getUsuario() != null) ? com.getUsuario().getNombre() : "Usuario";
+            
+            listaCombinada.add(new ActividadCombinadaDTO(
+                "comentario", 
+                com.getTexto(), // Campo correcto de tu entidad
+                nombreUsuario, 
+                com.getFechaCreacion() // Campo correcto de tu entidad
+            ));
+        }
+
+        // 3. Ordenar por fecha (LocalDateTime se compara correctamente)
+        listaCombinada.sort(Comparator.comparing(ActividadCombinadaDTO::getFecha).reversed());
+
+        return listaCombinada;
     }
 }

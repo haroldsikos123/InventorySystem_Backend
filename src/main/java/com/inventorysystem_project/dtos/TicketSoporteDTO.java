@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 
 public class TicketSoporteDTO {
     private Long id;
+    private String formattedId; // ID formateado como #INC-123
     private LocalDateTime fechaReporte;
     
     // Usamos IDs para la transferencia de datos
@@ -168,6 +169,14 @@ public class TicketSoporteDTO {
 
     public void setDuracionAtencionMinutos(Long duracionAtencionMinutos) {
         this.duracionAtencionMinutos = duracionAtencionMinutos;
+    }
+
+    public String getFormattedId() {
+        return formattedId;
+    }
+
+    public void setFormattedId(String formattedId) {
+        this.formattedId = formattedId;
     }
 
 }

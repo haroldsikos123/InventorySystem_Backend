@@ -31,6 +31,13 @@ public class GestionCambiosServiceImplement implements IGestionCambiosService {
     
     private SolicitudCambioDTO convertToDto(SolicitudCambio rfc) {
         SolicitudCambioDTO dto = modelMapper.map(rfc, SolicitudCambioDTO.class);
+        
+        // --- LÓGICA AÑADIDA PARA ID FORMATEADO ---
+        if (rfc.getId() != null) {
+            dto.setFormattedId("#CAB-" + rfc.getId());
+        }
+        // --- FIN LÓGICA AÑADIDA ---
+        
         if (rfc.getSolicitante() != null) {
             dto.setSolicitanteId(rfc.getSolicitante().getId());
             dto.setSolicitanteNombre(rfc.getSolicitante().getNombre() + " " + rfc.getSolicitante().getApellido());

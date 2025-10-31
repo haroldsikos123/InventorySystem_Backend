@@ -2,6 +2,7 @@ package com.inventorysystem_project.controllers;
 
 import com.inventorysystem_project.dtos.ComentarioTicketDTO;
 import com.inventorysystem_project.dtos.TicketSoporteDTO;
+import com.inventorysystem_project.dtos.ActividadCombinadaDTO; // Nueva importación
 import com.inventorysystem_project.entities.Usuario;
 import com.inventorysystem_project.serviceinterfaces.ITicketSoporteService;
 
@@ -21,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/soporte/tickets")
+@RequestMapping("/api/soporte/ticketsoporte")
 public class TicketSoporteController {
 
     @Autowired
@@ -237,6 +238,24 @@ public class TicketSoporteController {
         } catch (Exception e) {
             System.err.println("Error al calificar ticket ID " + ticketId + ": " + e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado al calificar el ticket.", e);
+        }
+    }
+
+    /**
+     * Endpoint para obtener las actividades combinadas (actividades + comentarios) de un ticket.
+     * GET /api/tickets/{id}/actividades
+     */
+    @GetMapping("/{id}/actividades")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<ActividadCombinadaDTO>> obtenerActividadesCombinadas(@PathVariable("id") Long ticketId) {
+        try {
+            List<ActividadCombinadaDTO> actividades = ticketService.getActividadesCombinadas(ticketId);
+            return ResponseEntity.ok(actividades);
+        } catch (EntityNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket no encontrado", e);
+        } catch (Exception e) {
+            System.err.println("Error al obtener actividades del ticket ID " + ticketId + ": " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al obtener las actividades del ticket", e);
         }
     }
 }

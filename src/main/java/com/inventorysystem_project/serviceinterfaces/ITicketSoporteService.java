@@ -33,4 +33,11 @@ public interface ITicketSoporteService {
      * @return El DTO del ticket actualizado con la calificación.
      */
     TicketSoporteDTO calificarTicket(Long ticketId, Integer calificacion, String username);
+    
+    /**
+     * Obtiene las actividades combinadas (actividades + comentarios) de un ticket específico.
+     * @param ticketId El ID del ticket.
+     * @return Lista de actividades combinadas ordenadas por fecha descendente.
+     */
+    List<com.inventorysystem_project.dtos.ActividadCombinadaDTO> getActividadesCombinadas(Long ticketId);
 }
