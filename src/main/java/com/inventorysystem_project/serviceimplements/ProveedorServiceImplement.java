@@ -31,12 +31,21 @@ public class ProveedorServiceImplement implements IProveedorService {
 
     @Override
     public void delete(Long id) {
+        System.out.println("🔍 Intentando eliminar proveedor con ID: " + id);
+        
+        if (id == null) {
+            throw new RuntimeException("El ID del proveedor no puede ser null");
+        }
+        
         Proveedor proveedor = proveedorRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Proveedor no encontrado con ID: " + id));
+        
+        System.out.println("✅ Proveedor encontrado: " + proveedor.getNombreEmpresaProveedor());
         
         // Verificar si existen órdenes de compra asociadas
         if (ordenCompraRepository.existsByProveedor(proveedor)) {
             long cantidadOrdenes = ordenCompraRepository.countByProveedor(proveedor);
+            System.out.println("❌ Proveedor tiene " + cantidadOrdenes + " órdenes de compra asociadas");
             throw new DataIntegrityException(
                 "No se puede eliminar el proveedor '" + proveedor.getNombreEmpresaProveedor() + 
                 "' porque tiene " + cantidadOrdenes + 
@@ -44,7 +53,9 @@ public class ProveedorServiceImplement implements IProveedorService {
             );
         }
         
+        System.out.println("🗑️ Eliminando proveedor: " + proveedor.getNombreEmpresaProveedor());
         proveedorRepository.deleteById(id);
+        System.out.println("✅ Proveedor eliminado exitosamente");
     }
 
     @Override
