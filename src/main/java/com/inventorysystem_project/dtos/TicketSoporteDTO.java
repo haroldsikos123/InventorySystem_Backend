@@ -27,6 +27,13 @@ public class TicketSoporteDTO {
     private String solucion;
     private LocalDateTime fechaCierre;
 
+    // --- NUEVOS CAMPOS PARA CALIFICACIÓN Y SEGUIMIENTO DE TIEMPO ---
+    private Integer calificacion;
+    private LocalDateTime fechaInicioAtencion;
+    private LocalDateTime fechaResolucion;
+    private Long duracionAtencionMinutos;
+    // --- FIN DE NUEVOS CAMPOS ---
+
     public Long getId() {
         return id;
     }
@@ -129,6 +136,38 @@ public class TicketSoporteDTO {
 
     public void setUsuarioReportaUsername(String usuarioReportaUsername) {
         this.usuarioReportaUsername = usuarioReportaUsername;
+    }
+
+    public Integer getCalificacion() {
+        return calificacion;
+    }
+
+    public void setCalificacion(Integer calificacion) {
+        this.calificacion = calificacion;
+    }
+
+    public LocalDateTime getFechaInicioAtencion() {
+        return fechaInicioAtencion;
+    }
+
+    public void setFechaInicioAtencion(LocalDateTime fechaInicioAtencion) {
+        this.fechaInicioAtencion = fechaInicioAtencion;
+    }
+
+    public LocalDateTime getFechaResolucion() {
+        return fechaResolucion;
+    }
+
+    public void setFechaResolucion(LocalDateTime fechaResolucion) {
+        this.fechaResolucion = fechaResolucion;
+    }
+
+    public Long getDuracionAtencionMinutos() {
+        return duracionAtencionMinutos;
+    }
+
+    public void setDuracionAtencionMinutos(Long duracionAtencionMinutos) {
+        this.duracionAtencionMinutos = duracionAtencionMinutos;
     }
 
 }

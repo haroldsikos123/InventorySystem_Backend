@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,6 +95,9 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
         TicketSoporte ticketExistente = ticketRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Ticket no encontrado con ID: " + id));
 
+        // Guardamos el estado anterior para comparar
+        EstadoTicket estadoAnterior = ticketExistente.getEstado();
+
         ticketExistente.setDescripcion(ticketSoporteDTO.getDescripcion());
         ticketExistente.setPrioridad(ticketSoporteDTO.getPrioridad());
         ticketExistente.setTipo(ticketSoporteDTO.getTipo());
@@ -107,13 +111,56 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
              ticketExistente.setResponsableAsignado(nuevoResponsable);
         }
 
+        // Actualizar estado si cambió
         if (ticketSoporteDTO.getEstado() != null && ticketExistente.getEstado() != ticketSoporteDTO.getEstado()) {
-            ticketExistente.setEstado(ticketSoporteDTO.getEstado());
-            if (ticketSoporteDTO.getEstado() == EstadoTicket.CERRADO || ticketSoporteDTO.getEstado() == EstadoTicket.RESUELTO) {
+            EstadoTicket estadoNuevo = ticketSoporteDTO.getEstado();
+            ticketExistente.setEstado(estadoNuevo);
+
+            // 1. LÓGICA DE INICIO DE ATENCIÓN
+            // Si el ticket estaba Abierto y pasa a "EN_PROGRESO"
+            // Y si aún no se ha registrado un inicio de atención
+            if (estadoAnterior == EstadoTicket.ABIERTO &&
+                estadoNuevo == EstadoTicket.EN_PROGRESO &&
+                ticketExistente.getFechaInicioAtencion() == null) {
+                
+                ticketExistente.setFechaInicioAtencion(LocalDateTime.now());
+            }
+
+            // 2. LÓGICA DE RESOLUCIÓN Y DURACIÓN
+            // Si el ticket NO estaba Resuelto y ahora SÍ lo está
+            if (estadoAnterior != EstadoTicket.RESUELTO && estadoNuevo == EstadoTicket.RESUELTO) {
+                
+                LocalDateTime fechaResolucion = LocalDateTime.now();
+                ticketExistente.setFechaResolucion(fechaResolucion);
+                ticketExistente.setFechaCierre(fechaResolucion);
+
+                // Verificamos si se había iniciado la atención formalmente
+                LocalDateTime fechaInicio = ticketExistente.getFechaInicioAtencion();
+                
+                if (fechaInicio == null) {
+                    // Si se resolvió directamente (sin pasar por "EN_PROGRESO"),
+                    // usamos la fecha de creación como inicio de la atención
+                    fechaInicio = ticketExistente.getFechaReporte();
+                    ticketExistente.setFechaInicioAtencion(fechaInicio);
+                }
+
+                // Calculamos la duración en minutos
+                long duracionEnMinutos = Duration.between(fechaInicio, fechaResolucion).toMinutes();
+                ticketExistente.setDuracionAtencionMinutos(duracionEnMinutos);
+            }
+
+            // Lógica original para otros estados
+            if (estadoNuevo == EstadoTicket.CERRADO && estadoAnterior != EstadoTicket.CERRADO) {
                 ticketExistente.setFechaCierre(LocalDateTime.now());
-            } else {
+            } else if (estadoNuevo != EstadoTicket.CERRADO && estadoNuevo != EstadoTicket.RESUELTO) {
+                // Si se reabre, limpiar fecha de cierre
                 ticketExistente.setFechaCierre(null);
             }
+        }
+
+        // Actualizar calificación si se proporciona
+        if (ticketSoporteDTO.getCalificacion() != null) {
+            ticketExistente.setCalificacion(ticketSoporteDTO.getCalificacion());
         }
 
         TicketSoporte ticketActualizado = ticketRepo.save(ticketExistente);

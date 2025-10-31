@@ -92,6 +92,17 @@ public class UsuarioController {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * Nuevo endpoint para obtener solo usuarios asignables (excluye GUEST y USER).
+     * Útil para seleccionar responsables de tickets.
+     */
+    @GetMapping("/asignables")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<UsuarioDTO>> getUsuariosAsignables() {
+        List<UsuarioDTO> listaUsuarios = usuarioService.getUsuariosAsignables();
+        return new ResponseEntity<>(listaUsuarios, HttpStatus.OK);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or #id == principal.id")
     public ResponseEntity<UsuarioDTO> listarPorId(@PathVariable("id") Long id) {

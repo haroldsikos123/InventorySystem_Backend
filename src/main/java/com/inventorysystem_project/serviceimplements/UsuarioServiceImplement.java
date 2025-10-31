@@ -1,16 +1,20 @@
 package com.inventorysystem_project.serviceimplements; 
 import com.inventorysystem_project.entities.Rol;
 import com.inventorysystem_project.entities.Usuario;
+import com.inventorysystem_project.dtos.UsuarioDTO;
 import com.inventorysystem_project.repositories.RolRepository;
 import com.inventorysystem_project.repositories.UsuarioRepository;
 import com.inventorysystem_project.serviceinterfaces.IUsuarioService;
 
 import org.hibernate.Hibernate;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UsuarioServiceImplement implements IUsuarioService {
@@ -24,6 +28,9 @@ public class UsuarioServiceImplement implements IUsuarioService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private ModelMapper modelMapper;
 
     @Override
     public void insert(Usuario usuario) {
@@ -77,4 +84,28 @@ public class UsuarioServiceImplement implements IUsuarioService {
     public Usuario findByCorreo(String correo) {
         return usuarioRepository.findByCorreo(correo);
     }
+
+    /**
+     * Devuelve solo los usuarios que pueden ser asignados a tickets
+     * (todos excepto GUEST y USER).
+     */
+    @Override
+    public List<UsuarioDTO> getUsuariosAsignables() {
+        List<String> rolesExcluidos = Arrays.asList("GUEST", "USER");
+        List<Usuario> usuarios = usuarioRepository.findUsuariosByRolNotIn(rolesExcluidos);
+        
+        return usuarios.stream()
+                       .map(usuario -> {
+                           UsuarioDTO dto = modelMapper.map(usuario, UsuarioDTO.class);
+                           if (usuario.getRol() != null) {
+                               dto.setRolId(usuario.getRol().getId());
+                           }
+                           if (usuario.getEmpresa() != null) {
+                               dto.setEmpresaId(usuario.getEmpresa().getId());
+                           }
+                           return dto;
+                       })
+                       .collect(Collectors.toList());
+    }
 }
+

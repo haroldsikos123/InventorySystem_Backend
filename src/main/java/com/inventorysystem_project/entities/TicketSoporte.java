@@ -53,6 +53,36 @@ public class TicketSoporte {
 
     private LocalDateTime fechaCierre;
 
+    // --- NUEVOS CAMPOS PARA CALIFICACIÓN Y SEGUIMIENTO DE TIEMPO ---
+    
+    /**
+     * Calificación dada por el usuario (USER/GUEST) de 1 a 5.
+     * Es 'Integer' para permitir valores nulos si aún no ha sido calificado.
+     */
+    @Column(name = "calificacion")
+    private Integer calificacion;
+
+    /**
+     * Fecha y hora en que un agente toma el ticket (ej. pasa a "EN_PROGRESO").
+     */
+    @Column(name = "fecha_inicio_atencion")
+    private LocalDateTime fechaInicioAtencion;
+
+    /**
+     * Fecha y hora en que el ticket se marca como "RESUELTO".
+     */
+    @Column(name = "fecha_resolucion")
+    private LocalDateTime fechaResolucion;
+
+    /**
+     * Duración total de la atención en minutos.
+     * Se calcula desde 'fechaInicioAtencion' hasta 'fechaResolucion'.
+     */
+    @Column(name = "duracion_atencion_minutos")
+    private Long duracionAtencionMinutos;
+
+    // --- FIN DE NUEVOS CAMPOS ---
+
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ComentarioTicket> comentarios;
 
@@ -145,6 +175,38 @@ public class TicketSoporte {
 
     public void setComentarios(List<ComentarioTicket> comentarios) {
         this.comentarios = comentarios;
+    }
+
+    public Integer getCalificacion() {
+        return calificacion;
+    }
+
+    public void setCalificacion(Integer calificacion) {
+        this.calificacion = calificacion;
+    }
+
+    public LocalDateTime getFechaInicioAtencion() {
+        return fechaInicioAtencion;
+    }
+
+    public void setFechaInicioAtencion(LocalDateTime fechaInicioAtencion) {
+        this.fechaInicioAtencion = fechaInicioAtencion;
+    }
+
+    public LocalDateTime getFechaResolucion() {
+        return fechaResolucion;
+    }
+
+    public void setFechaResolucion(LocalDateTime fechaResolucion) {
+        this.fechaResolucion = fechaResolucion;
+    }
+
+    public Long getDuracionAtencionMinutos() {
+        return duracionAtencionMinutos;
+    }
+
+    public void setDuracionAtencionMinutos(Long duracionAtencionMinutos) {
+        this.duracionAtencionMinutos = duracionAtencionMinutos;
     }
     
 }    
