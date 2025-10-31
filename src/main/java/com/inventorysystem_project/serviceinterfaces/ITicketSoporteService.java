@@ -24,4 +24,13 @@ public interface ITicketSoporteService {
      * Lista los tickets reportados por un usuario específico, opcionalmente filtrados por estado.
      */
     List<TicketSoporteDTO> listarTicketsPorUsuario(Long usuarioId, String estado);
+    
+    /**
+     * Permite al usuario que reportó el ticket asignarle una calificación.
+     * @param ticketId El ID del ticket a calificar.
+     * @param calificacion La calificación (1-5).
+     * @param username El username del usuario que está calificando (para validación).
+     * @return El DTO del ticket actualizado con la calificación.
+     */
+    TicketSoporteDTO calificarTicket(Long ticketId, Integer calificacion, String username);
 }

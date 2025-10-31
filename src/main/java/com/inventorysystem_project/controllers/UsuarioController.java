@@ -19,6 +19,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -258,5 +259,55 @@ public class UsuarioController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
+    }
+
+    /**
+     * Actualizar contraseña de un usuario
+     * El backend encripta automáticamente la contraseña con BCrypt
+     * Endpoint: PATCH /usuarios/{id}/password
+     * Body: { "password": "nuevaContraseña" }
+     */
+    @PatchMapping("/{id}/password")
+    @PreAuthorize("hasAuthority('ADMIN') or #id == authentication.principal.id")
+    public ResponseEntity<Void> actualizarPassword(
+            @PathVariable("id") Long id,
+            @RequestBody Map<String, String> requestBody,
+            Authentication authentication) {
+        
+        // Validar que el usuario existe
+        Usuario usuario = usuarioService.listId(id);
+        if (usuario == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        // Obtener la nueva contraseña del body
+        String newPassword = requestBody.get("password");
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
+        // Validación de seguridad: verificar identidad del usuario autenticado
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        Usuario usuarioActual = usuarioService.findByUsername(userDetails.getUsername());
+        
+        // Solo ADMIN puede cambiar contraseña de otros, o el propio usuario su contraseña
+        boolean esAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ADMIN"));
+        boolean esPropioUsuario = usuarioActual != null && usuarioActual.getId().equals(id);
+        
+        if (!esAdmin && !esPropioUsuario) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+
+        try {
+            // Actualizar solo la contraseña (el servicio se encarga de encriptar con BCrypt)
+            usuario.setPassword(newPassword);
+            usuarioService.insert(usuario); // El servicio encriptará automáticamente
+            
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (Exception e) {
+            System.err.println("Error al actualizar contraseña del usuario ID " + id + ": " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

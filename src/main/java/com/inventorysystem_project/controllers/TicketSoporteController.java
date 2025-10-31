@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -204,6 +205,38 @@ public class TicketSoporteController {
         } catch (Exception e) {
             System.err.println("Error al listar comentarios del ticket ID " + ticketId + ": " + e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado al listar los comentarios.", e);
+        }
+    }
+
+    @PatchMapping("/{ticketId}/calificar")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<TicketSoporteDTO> calificarTicket(
+            @PathVariable Long ticketId,
+            @RequestBody Map<String, Integer> payload,
+            Authentication authentication) {
+        
+        Integer calificacion = payload.get("calificacion");
+        if (calificacion == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El campo 'calificacion' es requerido en el body.");
+        }
+
+        try {
+            // Usamos el nombre del principal (token) para máxima seguridad
+            String username = authentication.getName(); 
+            TicketSoporteDTO ticketActualizado = ticketService.calificarTicket(ticketId, calificacion, username);
+            return new ResponseEntity<>(ticketActualizado, HttpStatus.OK);
+        
+        } catch (EntityNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        } catch (IllegalArgumentException e) {
+            // Captura si el ticket no está 'RESUELTO' o la calificación es inválida
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        } catch (AccessDeniedException e) { 
+            // Captura si el usuario no es el dueño del ticket
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage(), e);
+        } catch (Exception e) {
+            System.err.println("Error al calificar ticket ID " + ticketId + ": " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado al calificar el ticket.", e);
         }
     }
 }

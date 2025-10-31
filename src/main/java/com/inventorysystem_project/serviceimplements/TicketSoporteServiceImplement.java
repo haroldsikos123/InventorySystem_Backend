@@ -15,6 +15,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.time.Duration;
@@ -296,5 +297,35 @@ public class TicketSoporteServiceImplement implements ITicketSoporteService {
         return tickets.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public TicketSoporteDTO calificarTicket(Long ticketId, Integer calificacion, String username) {
+        TicketSoporte ticket = ticketRepo.findById(ticketId)
+                .orElseThrow(() -> new EntityNotFoundException("Ticket no encontrado con ID: " + ticketId));
+        
+        Usuario usuario = usuarioRepo.findByUsername(username);
+        if (usuario == null) {
+            throw new EntityNotFoundException("Usuario no encontrado: " + username);
+        }
+
+        // Validación de seguridad: Solo el usuario que reportó puede calificar
+        if (!ticket.getUsuarioReporta().getId().equals(usuario.getId())) {
+            throw new AccessDeniedException("No tiene permiso para calificar este ticket.");
+        }
+
+        // Validación de estado: Solo se puede calificar si está RESUELTO
+        if (ticket.getEstado() != EstadoTicket.RESUELTO) {
+             throw new IllegalArgumentException("Solo se pueden calificar tickets en estado 'RESUELTO'.");
+        }
+        
+        if (calificacion == null || calificacion < 1 || calificacion > 5) {
+             throw new IllegalArgumentException("La calificación debe estar entre 1 y 5.");
+        }
+
+        ticket.setCalificacion(calificacion);
+        TicketSoporte ticketGuardado = ticketRepo.save(ticket);
+        return convertToDto(ticketGuardado);
     }
 }
