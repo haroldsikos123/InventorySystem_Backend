@@ -116,20 +116,41 @@ public class AlmacenController {
         }
     }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public void modificar(@RequestBody AlmacenDTO dto) {
-        ModelMapper m = new ModelMapper();
-        Almacen almacen = m.map(dto, Almacen.class);
+    public ResponseEntity<?> modificar(@PathVariable("id") Long id, @RequestBody AlmacenDTO dto) {
+        try {
+            ModelMapper m = new ModelMapper();
+            Almacen almacen = m.map(dto, Almacen.class);
+            
+            // Asegurar que el ID del almacén sea el correcto
+            almacen.setId(id);
 
-        // Establecer la empresa manualmente ya que el DTO solo tiene el ID
-        if (dto.getEmpresaId() != null) {
-            Empresa empresa = empresaService.listId(dto.getEmpresaId());
-            if (empresa != null) {
-                almacen.setEmpresa(empresa);
+            // Establecer la empresa manualmente ya que el DTO solo tiene el ID
+            if (dto.getEmpresaId() != null) {
+                Empresa empresa = empresaService.listId(dto.getEmpresaId());
+                if (empresa != null) {
+                    almacen.setEmpresa(empresa);
+                } else {
+                    return ResponseEntity.badRequest()
+                        .body(Map.of("error", "La empresa especificada no existe"));
+                }
             }
-        }
 
-        almacenService.insert(almacen);
+            almacenService.insert(almacen);
+            return ResponseEntity.ok(Map.of("mensaje", "Almacén actualizado exitosamente"));
+            
+        } catch (DataIntegrityViolationException e) {
+            String mensaje = "Error de integridad de datos: ";
+            if (e.getMessage().contains("llave duplicada")) {
+                mensaje += "Ya existe un almacén con esos datos.";
+            } else {
+                mensaje += "Los datos no cumplen con las restricciones.";
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", mensaje));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Error al actualizar el almacén: " + e.getMessage()));
+        }
     }
 }

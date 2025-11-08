@@ -2,6 +2,7 @@ package com.inventorysystem_project.serviceimplements;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.inventorysystem_project.entities.Almacen;
 import com.inventorysystem_project.repositories.AlmacenRepository;
 import com.inventorysystem_project.repositories.MovimientoInventarioMateriaPrimaRepository;
@@ -22,8 +23,15 @@ public class AlmacenServiceImplement implements IAlmacenService {
     private MovimientoInventarioProductoTerminadoRepository movimientoPTRepository;
 
     @Override
+    @Transactional
     public void insert(Almacen almacen) {
-        almacenR.save(almacen);
+        if (almacen.getId() != null && almacen.getId() > 0) {
+            // Es una actualización - usar merge para reflejar cambios
+            almacenR.save(almacen);
+        } else {
+            // Es un insert nuevo
+            almacenR.save(almacen);
+        }
     }
 
     @Override

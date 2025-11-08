@@ -26,19 +26,19 @@ public class Almacen implements Serializable {
     @Column(length = 50, nullable = false)
     private String ubicacion;
 
-    @OneToMany(mappedBy = "almacen", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "almacen", cascade = CascadeType.MERGE, fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<MovimientoInventarioMateriaPrima> movimientosInventario;
 
-    @OneToMany(mappedBy = "almacen", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "almacen", cascade = CascadeType.MERGE, fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<StockAlmacenMateriaPrima> stockMateriaPrima;
 
-    @OneToMany(mappedBy = "almacen", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "almacen", cascade = CascadeType.MERGE, fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<StockAlmacenProductoTerminado> stockProductoTerminado;
 
-    @OneToMany(mappedBy = "almacen", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "almacen", cascade = CascadeType.MERGE, fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<MovimientoInventarioProductoTerminado> ventasProductoTerminado;
 
