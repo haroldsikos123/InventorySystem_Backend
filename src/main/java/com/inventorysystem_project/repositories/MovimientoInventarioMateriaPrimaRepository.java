@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MovimientoInventarioMateriaPrimaRepository extends JpaRepository<MovimientoInventarioMateriaPrima, Long> {
-
+    long countByAlmacenId(Long almacenId);
 }

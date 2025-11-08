@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.inventorysystem_project.entities.Almacen;
 import com.inventorysystem_project.repositories.AlmacenRepository;
+import com.inventorysystem_project.repositories.MovimientoInventarioMateriaPrimaRepository;
+import com.inventorysystem_project.repositories.MovimientoInventarioProductoTerminadoRepository;
 import com.inventorysystem_project.serviceinterfaces.IAlmacenService;
 
 import java.util.List;
@@ -12,6 +14,12 @@ import java.util.List;
 public class AlmacenServiceImplement implements IAlmacenService {
     @Autowired
     private AlmacenRepository almacenR;
+
+    @Autowired
+    private MovimientoInventarioMateriaPrimaRepository movimientoMPRepository;
+
+    @Autowired
+    private MovimientoInventarioProductoTerminadoRepository movimientoPTRepository;
 
     @Override
     public void insert(Almacen almacen) {
@@ -31,5 +39,19 @@ public class AlmacenServiceImplement implements IAlmacenService {
     @Override
     public Almacen listId(Long id) {
         return almacenR.findById(id).orElse(null);
+    }
+
+    @Override
+    public boolean tieneMovimientosRegistrados(Long almacenId) {
+        long movimientosMP = movimientoMPRepository.countByAlmacenId(almacenId);
+        long movimientosPT = movimientoPTRepository.countByAlmacenId(almacenId);
+        return (movimientosMP + movimientosPT) > 0;
+    }
+
+    @Override
+    public long contarMovimientos(Long almacenId) {
+        long movimientosMP = movimientoMPRepository.countByAlmacenId(almacenId);
+        long movimientosPT = movimientoPTRepository.countByAlmacenId(almacenId);
+        return movimientosMP + movimientosPT;
     }
 }

@@ -8,6 +8,7 @@ import com.inventorysystem_project.serviceinterfaces.IEmpresaService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -92,8 +93,27 @@ public class AlmacenController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
-    public void eliminar(@PathVariable("id") Long id) {
-        almacenService.delete(id);
+    public ResponseEntity<?> eliminar(@PathVariable("id") Long id) {
+        try {
+            boolean tieneMovimientos = almacenService.tieneMovimientosRegistrados(id);
+            
+            if (tieneMovimientos) {
+                long cantidadMovimientos = almacenService.contarMovimientos(id);
+                return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", 
+                        "No se puede eliminar el almacén porque tiene " + 
+                        cantidadMovimientos + " movimiento(s) registrado(s)."));
+            }
+            
+            almacenService.delete(id);
+            return ResponseEntity.ok(Map.of("message", "Almacén eliminado correctamente"));
+            
+        } catch (Exception e) {
+            return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Error al eliminar el almacén: " + e.getMessage()));
+        }
     }
 
     @PutMapping

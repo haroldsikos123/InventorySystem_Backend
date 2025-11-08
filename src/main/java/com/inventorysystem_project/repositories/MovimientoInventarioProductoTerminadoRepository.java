@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MovimientoInventarioProductoTerminadoRepository extends JpaRepository<MovimientoInventarioProductoTerminado, Long> {
-    // Puedes agregar consultas personalizadas aquí si es necesario
+    long countByAlmacenId(Long almacenId);
 }

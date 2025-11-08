@@ -8,4 +8,6 @@ public interface IAlmacenService {
     public List<Almacen> list();
     public void delete(Long id);
     public Almacen listId(Long id);
+    public boolean tieneMovimientosRegistrados(Long almacenId);
+    public long contarMovimientos(Long almacenId);
 }
