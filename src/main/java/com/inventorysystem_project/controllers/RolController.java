@@ -62,11 +62,48 @@ public class RolController {
     }
 
     @PutMapping
-    @PreAuthorize("hasAuthority('ADMIN')") // <-- DEJA ESTA (Modificar debe ser solo para Admin)
-    public void modificar(@RequestBody RolDTO dto){
-        ModelMapper m=new ModelMapper();
-        Rol d=m.map(dto, Rol.class);
-        rolR.insert(d);
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<?> modificar(@RequestBody RolDTO dto){
+        try {
+            System.out.println("🔍 Recibiendo PUT para rol ID: " + dto.getId());
+            System.out.println("📝 Datos del rol: " + dto.getRol());
+            
+            // ✅ VALIDACIÓN 1: Verificar que el ID no sea null
+            if (dto.getId() == null) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El ID del rol es requerido para actualizar"));
+            }
+            
+            // ✅ VALIDACIÓN 2: Verificar que el rol existe antes de actualizar
+            Rol rolExistente = rolR.listId(dto.getId());
+            if (rolExistente == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "No existe un rol con ID: " + dto.getId()));
+            }
+            
+            System.out.println("✅ Rol existente encontrado: " + rolExistente.getRol());
+            
+            // ✅ MAPEAR y FORZAR el ID para asegurar UPDATE
+            ModelMapper m = new ModelMapper();
+            Rol d = m.map(dto, Rol.class);
+            d.setId(dto.getId()); // Forzar el ID para asegurar que sea UPDATE
+            
+            System.out.println("💾 Guardando rol con ID: " + d.getId());
+            rolR.insert(d);  // Ahora hará UPDATE porque el ID existe
+            
+            System.out.println("✅ Rol actualizado correctamente");
+            return ResponseEntity.ok(Map.of(
+                "mensaje", "Rol actualizado correctamente",
+                "id", d.getId(),
+                "rol", d.getRol()
+            ));
+            
+        } catch (Exception ex) {
+            System.err.println("❌ Error al actualizar rol: " + ex.getMessage());
+            ex.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error al actualizar: " + ex.getMessage()));
+        }
     }
 }
 
