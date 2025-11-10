@@ -10,8 +10,8 @@ import com.inventorysystem_project.serviceinterfaces.IUsuarioService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus; // <-- Importante
-import org.springframework.http.ResponseEntity; // <-- Importante
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +22,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -38,14 +37,11 @@ public class UsuarioController {
     @Autowired
     private IRolService rolService;
 
- @PostMapping("/registrar")
-    // @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('USER') or hasAuthority('GUEST')")
+    @PostMapping("/registrar")
     public ResponseEntity<?> registrar(@RequestBody UsuarioDTO dto) {
         try {
-            // PROTECCIÓN CONTRA DUPLICACIÓN DE ID
             dto.setId(null);
             
-            // 1. VALIDACIÓN DE DUPLICADOS
             if (usuarioService.findByUsername(dto.getUsername()) != null) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "El nombre de usuario '" + dto.getUsername() + "' ya existe"));
@@ -58,7 +54,6 @@ public class UsuarioController {
             ModelMapper m = new ModelMapper();
             Usuario usuario = m.map(dto, Usuario.class);
 
-            // 2. LÓGICA DE EMPRESA POR DEFECTO (ID 1)
             try {
                 Empresa empresaPorDefecto = empresaService.listId(1L); 
                 usuario.setEmpresa(empresaPorDefecto); 
@@ -66,16 +61,11 @@ public class UsuarioController {
                 usuario.setEmpresa(null);
             }
 
-            // 3. NO ASIGNAMOS ROL - El servicio asignará GUEST si es necesario
             usuario.setRol(null);
+            usuarioService.insert(usuario);
 
-            // 4. GUARDAR USUARIO
-            usuarioService.insert(usuario); // El servicio encriptará la contraseña
-
-            // 5. DEVOLVER RESPUESTA
             UsuarioDTO usuarioGuardadoDTO = m.map(usuario, UsuarioDTO.class);
             
-            // Asignar IDs al DTO de respuesta
             if (usuario.getRol() != null) {
                 usuarioGuardadoDTO.setRolId(usuario.getRol().getId());
             }
@@ -95,7 +85,6 @@ public class UsuarioController {
     }
 
     @GetMapping("/listar")
-    //@PreAuthorize("hasAuthority('ADMIN')")
     public List<UsuarioDTO> listar() {
         return usuarioService.list().stream().map(usuario -> {
             ModelMapper m = new ModelMapper();
@@ -110,10 +99,6 @@ public class UsuarioController {
         }).collect(Collectors.toList());
     }
 
-    /**
-     * Nuevo endpoint para obtener solo usuarios asignables (excluye GUEST y USER).
-     * Útil para seleccionar responsables de tickets.
-     */
     @GetMapping("/asignables")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<UsuarioDTO>> getUsuariosAsignables() {
@@ -157,7 +142,7 @@ public class UsuarioController {
             usuarioService.delete(id);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch(Exception e) {
-            System.err.println("Error al guardar usuario actualizado: " + e.getMessage());
+            System.err.println("Error al eliminar usuario: " + e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -194,11 +179,9 @@ public class UsuarioController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
-        // Actualizar solo campos permitidos
         usuarioActual.setNombre(dto.getNombre());
         usuarioActual.setApellido(dto.getApellido());
         usuarioActual.setTelefono(dto.getTelefono());
-        // NO permitir cambiar rol, enabled, username, etc.
 
         try {
             usuarioService.insert(usuarioActual);
@@ -220,70 +203,97 @@ public class UsuarioController {
 
     @PutMapping
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<UsuarioDTO> modificar(@RequestBody UsuarioDTO dto) {
-        ModelMapper modelMapper = new ModelMapper();
-
-        Usuario usuarioExistente = usuarioService.listId(dto.getId());
-        if (usuarioExistente == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    public ResponseEntity<?> modificar(@RequestBody UsuarioDTO dto, Authentication authentication) {
+        System.out.println("═══════════════════════════════════════");
+        System.out.println("🔍 PUT /usuarios recibido");
+        System.out.println("📝 Usuario a modificar ID: " + dto.getId());
+        System.out.println("📝 Nombre: " + dto.getNombre());
+        
+        if (authentication != null) {
+            System.out.println("✅ Authentication presente: " + authentication.getName());
+            System.out.println("🔐 Authorities: " + authentication.getAuthorities());
+            System.out.println("🎭 Authenticated: " + authentication.isAuthenticated());
+        } else {
+            System.out.println("❌ NO HAY AUTHENTICATION");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "No autenticado"));
         }
+        System.out.println("═══════════════════════════════════════");
+        
+        try {
+            if (dto.getId() == null) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El ID del usuario es requerido"));
+            }
+            
+            ModelMapper modelMapper = new ModelMapper();
+            Usuario usuarioExistente = usuarioService.listId(dto.getId());
+            
+            if (usuarioExistente == null) {
+                System.out.println("❌ Usuario con ID " + dto.getId() + " no encontrado");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Usuario no encontrado"));
+            }
 
-        // Mapear campos actualizables
-        usuarioExistente.setNombre(dto.getNombre());
-        usuarioExistente.setApellido(dto.getApellido());
-        usuarioExistente.setCorreo(dto.getCorreo());
-        usuarioExistente.setDni(dto.getDni());
-        usuarioExistente.setEnabled(dto.getEnabled());
-        usuarioExistente.setFechaNacimiento(dto.getFechaNacimiento());
-        usuarioExistente.setGenero(dto.getGenero());
-        usuarioExistente.setTelefono(dto.getTelefono());
+            System.out.println("✅ Usuario existente encontrado: " + usuarioExistente.getUsername());
 
-        // Lógica de Empresa
-        if (dto.getEmpresaId() != null) {
-            Empresa empresa = empresaService.listId(dto.getEmpresaId());
-            if (empresa != null) {
-                usuarioExistente.setEmpresa(empresa);
+            // Mapear campos actualizables
+            usuarioExistente.setNombre(dto.getNombre());
+            usuarioExistente.setApellido(dto.getApellido());
+            usuarioExistente.setCorreo(dto.getCorreo());
+            usuarioExistente.setDni(dto.getDni());
+            usuarioExistente.setEnabled(dto.getEnabled());
+            usuarioExistente.setFechaNacimiento(dto.getFechaNacimiento());
+            usuarioExistente.setGenero(dto.getGenero());
+            usuarioExistente.setTelefono(dto.getTelefono());
+
+            // Lógica de Empresa
+            if (dto.getEmpresaId() != null) {
+                Empresa empresa = empresaService.listId(dto.getEmpresaId());
+                if (empresa != null) {
+                    usuarioExistente.setEmpresa(empresa);
+                } else {
+                    System.err.println("Advertencia: Empresa con ID " + dto.getEmpresaId() + " no encontrada");
+                    usuarioExistente.setEmpresa(null);
+                }
             } else {
-                System.err.println("Advertencia: Empresa con ID " + dto.getEmpresaId() + " no encontrada al modificar usuario " + dto.getId());
                 usuarioExistente.setEmpresa(null);
             }
-        } else {
-            usuarioExistente.setEmpresa(null);
-        }
 
-        // Lógica de Rol
-        if (dto.getRolId() != null) {
-            Rol nuevoRol = rolService.listId(dto.getRolId());
-            if (nuevoRol != null) {
-                usuarioExistente.setRol(nuevoRol);
+            // Lógica de Rol
+            if (dto.getRolId() != null) {
+                Rol nuevoRol = rolService.listId(dto.getRolId());
+                if (nuevoRol != null) {
+                    usuarioExistente.setRol(nuevoRol);
+                } else {
+                    System.err.println("Advertencia: Rol con ID " + dto.getRolId() + " no encontrado");
+                }
             } else {
-                System.err.println("Advertencia: Rol con ID " + dto.getRolId() + " no encontrado al modificar usuario " + dto.getId());
+                System.err.println("Advertencia: No se proporcionó rolId. Se mantendrá el rol actual.");
             }
-        } else {
-            System.err.println("Advertencia: No se proporcionó rolId al modificar usuario " + dto.getId() + ". Se mantendrá el rol actual.");
-        }
 
-        try {
             usuarioService.insert(usuarioExistente);
             Usuario usuarioGuardado = usuarioService.listId(dto.getId());
             UsuarioDTO usuarioActualizadoDTO = modelMapper.map(usuarioGuardado, UsuarioDTO.class);
+            
             if (usuarioGuardado.getRol() != null) {
                 usuarioActualizadoDTO.setRolId(usuarioGuardado.getRol().getId());
             }
-            return new ResponseEntity<>(usuarioActualizadoDTO, HttpStatus.OK);
+            if (usuarioGuardado.getEmpresa() != null) {
+                usuarioActualizadoDTO.setEmpresaId(usuarioGuardado.getEmpresa().getId());
+            }
+            
+            System.out.println("✅ Usuario actualizado correctamente: " + usuarioGuardado.getUsername());
+            return ResponseEntity.ok(usuarioActualizadoDTO);
+            
         } catch(Exception e) {
-            System.err.println("Error al guardar usuario actualizado: " + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            System.err.println("❌ Error al guardar usuario: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error al actualizar usuario: " + e.getMessage()));
         }
-
     }
 
-    /**
-     * Actualizar contraseña de un usuario
-     * El backend encripta automáticamente la contraseña con BCrypt
-     * Endpoint: PATCH /usuarios/{id}/password
-     * Body: { "password": "nuevaContraseña" }
-     */
     @PatchMapping("/{id}/password")
     @PreAuthorize("hasAuthority('ADMIN') or #id == authentication.principal.id")
     public ResponseEntity<Void> actualizarPassword(
@@ -291,23 +301,19 @@ public class UsuarioController {
             @RequestBody Map<String, String> requestBody,
             Authentication authentication) {
         
-        // Validar que el usuario existe
         Usuario usuario = usuarioService.listId(id);
         if (usuario == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
-        // Obtener la nueva contraseña del body
         String newPassword = requestBody.get("password");
         if (newPassword == null || newPassword.trim().isEmpty()) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        // Validación de seguridad: verificar identidad del usuario autenticado
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         Usuario usuarioActual = usuarioService.findByUsername(userDetails.getUsername());
         
-        // Solo ADMIN puede cambiar contraseña de otros, o el propio usuario su contraseña
         boolean esAdmin = authentication.getAuthorities().stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ADMIN"));
         boolean esPropioUsuario = usuarioActual != null && usuarioActual.getId().equals(id);
@@ -317,10 +323,8 @@ public class UsuarioController {
         }
 
         try {
-            // Actualizar solo la contraseña (el servicio se encarga de encriptar con BCrypt)
             usuario.setPassword(newPassword);
-            usuarioService.insert(usuario); // El servicio encriptará automáticamente
-            
+            usuarioService.insert(usuario);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch (Exception e) {
             System.err.println("Error al actualizar contraseña del usuario ID " + id + ": " + e.getMessage());
