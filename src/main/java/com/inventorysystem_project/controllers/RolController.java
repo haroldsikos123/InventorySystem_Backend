@@ -61,35 +61,31 @@ public class RolController {
         rolR.delete(id);
     }
 
-    @PutMapping
+    @PutMapping("/{id}")  // ✅ Cambiar de @PutMapping a @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<?> modificar(@RequestBody RolDTO dto){
+    public ResponseEntity<?> modificar(@PathVariable("id") Long id, @RequestBody RolDTO dto){
         try {
-            System.out.println("🔍 Recibiendo PUT para rol ID: " + dto.getId());
+            System.out.println("🔍 Recibiendo PUT para rol ID: " + id);
             System.out.println("📝 Datos del rol: " + dto.getRol());
             
-            // ✅ VALIDACIÓN 1: Verificar que el ID no sea null
-            if (dto.getId() == null) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "El ID del rol es requerido para actualizar"));
-            }
+            // ✅ FORZAR el ID desde el PathVariable (no confiar en el body)
+            dto.setId(id);
             
-            // ✅ VALIDACIÓN 2: Verificar que el rol existe antes de actualizar
-            Rol rolExistente = rolR.listId(dto.getId());
+            // Verificar que el rol existe
+            Rol rolExistente = rolR.listId(id);
             if (rolExistente == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "No existe un rol con ID: " + dto.getId()));
+                    .body(Map.of("error", "No existe un rol con ID: " + id));
             }
             
             System.out.println("✅ Rol existente encontrado: " + rolExistente.getRol());
             
-            // ✅ MAPEAR y FORZAR el ID para asegurar UPDATE
             ModelMapper m = new ModelMapper();
             Rol d = m.map(dto, Rol.class);
-            d.setId(dto.getId()); // Forzar el ID para asegurar que sea UPDATE
+            d.setId(id); // ✅ Forzar el ID nuevamente por seguridad
             
             System.out.println("💾 Guardando rol con ID: " + d.getId());
-            rolR.insert(d);  // Ahora hará UPDATE porque el ID existe
+            rolR.insert(d);
             
             System.out.println("✅ Rol actualizado correctamente");
             return ResponseEntity.ok(Map.of(
